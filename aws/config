@@ -1,0 +1,34 @@
+[profile bastion]
+region=us-west-2
+
+[profile mgage_bosu]
+role_arn = arn:aws:iam::143964391865:role/admin/bastion-superuser-role-RoleName-2R6YCMQQ5S46
+source_profile = bastion
+mfa_serial = arn:aws:iam::143964391865:mfa/adrian.herrera
+ 
+[profile mgage_dev]
+role_arn = arn:aws:iam::209983464176:role/admin/dev-superuser-role-RoleName-MJX2ZSZMW9C0
+source_profile = bastion
+mfa_serial = arn:aws:iam::143964391865:mfa/adrian.herrera
+
+[profile mgage_staging]
+role_arn = arn:aws:iam::264982475403:role/admin/stage-superuser-role-RoleName-10M8D4ACI8UTE
+source_profile = bastion
+mfa_serial = arn:aws:iam::143964391865:mfa/adrian.herrera
+
+[profile mgage_prod]
+role_arn = arn:aws:iam::103011750455:role/admin/prod-superuser-role-RoleName-1P9U8BY6QYXD4
+source_profile = bastion
+mfa_serial = arn:aws:iam::143964391865:mfa/adrian.herrera
+
+[profile mgage_global]
+role_arn = arn:aws:iam::602503371133:role/admin/global-superuser-role-RoleName-1SV2IG2E1CYII
+source_profile = bastion
+mfa_serial = arn:aws:iam::143964391865:mfa/adrian.herrera
+
+[profile mgage_build]
+role_arn = arn:aws:iam::033013578872:role/admin/build-superuser-role-RoleName-1EXBP3CERFG32
+source_profile = bastion
+mfa_serial = arn:aws:iam::143964391865:mfa/adrian.herrera
+[preview]
+cloudfront = true
