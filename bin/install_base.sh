@@ -62,6 +62,7 @@ install_brew() {
 		neovim \
 		openvpn \
 		s3cmd \
+		tmux \
 		tree \
 		unzip \
 		cmake	\
