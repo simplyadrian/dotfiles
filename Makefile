@@ -1,14 +1,17 @@
-.PHONY: all bin dotfiles etc test shellcheck
+.PHONY: all base bin dotfiles etc test shellcheck
 
-all: bin dotfiles etc
+all: base bin dotfiles etc
+
+base:
+	# do install of all base packages
+	$(CURDIR)/bin/install_base.sh base
 
 bin:
 	# add aliases for things in bin
-	for file in $(shell find $(CURDIR)/bin -type f -not -name "*-backlight" -not -name ".*.swp"); do \
+	for file in $(shell find $(CURDIR)/bin -type f -not -name "install-base.sh" -not -name ".*.swp"); do \
 		f=$$(basename $$file); \
 		sudo ln -sf $$file /usr/local/bin/$$f; \
 	done
-	sudo ln -sf $(CURDIR)/bin/browser-exec /usr/local/bin/open; \
 
 dotfiles:
 	# add aliases for dotfiles

@@ -111,11 +111,15 @@ configure_vim() {
 	(
 	cd "$HOME"
 
-	# install .vim files
-	git clone --recursive git@github.com:jessfraz/.vim.git "${HOME}/.vim"
-	ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
-	sudo ln -snf "${HOME}/.vim" /root/.vim
-	sudo ln -snf "${HOME}/.vimrc" /root/.vimrc
+	if [ -d "${HOME}/.vim" ]; then
+		rm -rf "${HOME}/.vim"
+		git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
+		ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
+	else
+		# install .vim files
+		git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
+		ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
+	fi
 	)
 }
 
@@ -125,7 +129,7 @@ usage() {
 	echo "base                      - install the base packages. including docker and custom scripts and neovim configuration"
 	echo "install_docker            - install docker for macosx"
 	echo "install_scripts           - install custom scripts and binaries from various sources"
-	echo "configure_vim             - configure neovim with jessfrazz's vim repo."
+	echo "configure_vim             - configure neovim."
 }
 
 main() {
