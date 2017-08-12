@@ -25,13 +25,6 @@ etc:
 		sudo ln -f $$file $$f; \
 	done
 
-aws:
-	for file in $(shell find $(CURDIR)/aws -type f -not -name ".*.swp"); do \
-		f=$$(echo $$file | sed -e 's|$(CURDIR)||'); \
-		sudo mkdir -p $$f; \
-		sudo ln -f $$file $$f; \
-	done
-
 test: shellcheck
 
 # if this session isn't interactive, then we don't want to allocate a
