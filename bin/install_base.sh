@@ -45,6 +45,7 @@ install_brew() {
 		bzip2 \
 		curl \
 		findutils \
+		fortune \
 		gcc \
 		git \
 		gnupg \

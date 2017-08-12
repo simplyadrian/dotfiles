@@ -62,11 +62,6 @@ prompt_git() {
 	fi;
 }
 
-cloud=""
-if grep -q "^flags.* hypervisor" /proc/cpuinfo ; then
-	cloud="☁️ "
-fi
-
 if tput setaf 1 &> /dev/null; then
 	tput sgr0; # reset colors
 	bold=$(tput bold);

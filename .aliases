@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # mac specific aliases
-alias vim='nvim -v'
+alias vim='nvim'
 
 # Easier navigation: .., ..., ...., ....., ~ and -
 alias ..="cd .."
