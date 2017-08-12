@@ -460,3 +460,37 @@ dell_monitor() {
 	xrandr --addmode  DP1 "3840x2160_30.00"
 	xrandr --output eDP1 --auto --primary --output DP1 --mode 3840x2160_30.00 --above eDP1 --rate 30
 }
+
+# aws-vault role assumption helper functions
+# modify prompt if environment is set
+if [ -n "$ENVIRONMENT" ] ; then
+  export PS1="[\e[${ENVIRONMENT_COLOR}m${ENVIRONMENT}\e[m]$PS1"
+fi
+
+aws_shell () {
+  aws-vault exec --session-ttl=4h --assume-role-ttl=60m "$ENVIRONMENT" --server -- bash -l
+}
+
+# ssh-agent function to load ssh key
+SSH_ENV="$HOME/.ssh/environment"
+
+function start_agent {
+  echo "Initialising new SSH agent..."
+  /usr/bin/ssh-agent | sed 's/^echo/#echo/' > "${SSH_ENV}"
+  echo succeeded
+  chmod 600 "${SSH_ENV}"
+  . "${SSH_ENV}" > /dev/null
+  /usr/bin/ssh-add;
+}
+
+# Source SSH settings, if applicable
+
+if [ -f "${SSH_ENV}" ]; then
+  . "${SSH_ENV}" > /dev/null
+  #ps ${SSH_AGENT_PID} doesn't work under cywgin
+  ps -ef | grep ${SSH_AGENT_PID} | grep ssh-agent$ > /dev/null || {
+  start_agent;
+  }
+else
+  start_agent;
+fi
