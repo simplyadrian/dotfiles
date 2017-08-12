@@ -60,6 +60,7 @@ install_brew() {
 		lsof \
 		make \
 		neovim \
+		ngrep \
 		openvpn \
 		s3cmd \
 		tmux \
