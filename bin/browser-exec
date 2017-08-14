@@ -34,7 +34,7 @@ browser_exec(){
 				sudo nsenter -t "$chrome_pid" --pid --user --net --uts --mount --ipc /usr/bin/google-chrome --user-data-dir=/data "$@" 2>/dev/null
 			else
 				# neither are currently running so lets try xdg-open
-				xdg-open "$@"
+				open "$@"
 			fi
 		fi
 	fi

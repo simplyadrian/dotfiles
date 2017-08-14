@@ -227,9 +227,9 @@ v() {
 # location
 o() {
 	if [ $# -eq 0 ]; then
-		xdg-open .	> /dev/null 2>&1
+		open .	> /dev/null 2>&1
 	else
-		xdg-open "$@" > /dev/null 2>&1
+		open "$@" > /dev/null 2>&1
 	fi
 }
 

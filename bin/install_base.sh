@@ -76,6 +76,7 @@ install_brew() {
 		google-chrome \
 		iterm2 \
 		java \
+		xquartz
 		slack ;
 	echo "Completed installing base packages via homebrew"
 	)
