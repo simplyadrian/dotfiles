@@ -127,7 +127,7 @@ configure_vim() {
 }
 
 usage() {
-	echo -e "brew_base.sh\n\tThis script installs my basic homebrew packages for a Mac laptop\n"
+	echo -e "install_base.sh\n\tThis script installs my basic packages for a Mac laptop\n"
 	echo "Usage:"
 	echo "base                      - install the base packages. including docker and custom scripts and neovim configuration"
 	echo "install_docker            - install docker for macosx"
