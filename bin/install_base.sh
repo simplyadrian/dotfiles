@@ -39,7 +39,6 @@ install_brew() {
 	ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)";
 	brew update && brew install \
 		awscli \
-		boost \
 		bash-completion \
 		bc \
 		bzip2 \
@@ -48,6 +47,7 @@ install_brew() {
 		fortune \
 		gcc \
 		git \
+		git-open \
 		gnupg \
 		gnupg2 \
 		gnu-indent \
@@ -59,7 +59,7 @@ install_brew() {
 		less \
 		lsof \
 		make \
-		neovim \
+		macvim \
 		ngrep \
 		openvpn \
 		s3cmd \
@@ -76,7 +76,7 @@ install_brew() {
 		google-chrome \
 		iterm2 \
 		java \
-		xquartz
+		xquartz \
 		slack ;
 	echo "Completed installing base packages via homebrew"
 	)

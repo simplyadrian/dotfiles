@@ -21,6 +21,18 @@ calc() {
 	printf "\n"
 }
 
+# Open XQuartz for x11 display
+xquartz() {
+	open -a XQuartz
+}
+
+# Run xhost	and allow connections from local machine
+run_xhost() {
+	display_number=`ps -ef | grep "Xquartz :\d" | grep -v xinit | awk '{ print $9; }'`
+	ip=$(ifconfig en0 | grep inet | awk '$1=="inet" {print $2}')
+	xhost + $ip
+}
+
 # Create a new directory and enter it
 mkd() {
 	mkdir -p "$@"
@@ -430,35 +442,6 @@ golistdeps(){
 
 	go list -e -f '{{join .Deps "\n"}}' ./... | xargs go list -e -f '{{if not .Standard}}{{.ImportPath}}{{end}}'
 	)
-}
-
-# get the name of a x window
-xname(){
-	local window_id=$1
-
-	if [[ -z $window_id ]]; then
-		echo "Please specifiy a window id, you find this with 'xwininfo'"
-
-		return 1
-	fi
-
-	local match_string='".*"'
-	local match_qstring='"[^"\\]*(\\.[^"\\]*)*"' # NOTE: Adds 1 backreference
-
-	# get the name
-	xprop -id "$window_id" | \
-		sed -nr \
-		-e "s/^WM_CLASS\(STRING\) = ($match_qstring), ($match_qstring)$/instance=\1\nclass=\3/p" \
-		-e "s/^WM_WINDOW_ROLE\(STRING\) = ($match_qstring)$/window_role=\1/p" \
-		-e "/^WM_NAME\(STRING\) = ($match_string)$/{s//title=\1/; h}" \
-		-e "/^_NET_WM_NAME\(UTF8_STRING\) = ($match_qstring)$/{s//title=\1/; h}" \
-		-e "\${g; p}"
-}
-
-dell_monitor() {
-	xrandr --newmode "3840x2160_30.00"  338.75  3840 4080 4488 5136  2160 2163 2168 2200 -hsync +vsync
-	xrandr --addmode  DP1 "3840x2160_30.00"
-	xrandr --output eDP1 --auto --primary --output DP1 --mode 3840x2160_30.00 --above eDP1 --rate 30
 }
 
 # aws-vault role assumption helper functions
