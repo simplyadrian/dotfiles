@@ -478,7 +478,7 @@ else
   start_agent;
 fi
 
-function light() {
+light() {
   if [ -z "$2" ]
     then src="pbpaste"
   else
