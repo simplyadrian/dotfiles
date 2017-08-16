@@ -54,6 +54,7 @@ install_brew() {
 		go \
 		grep \
 		gzip \
+		highlight \
 		icdiff \
 		jq \
 		less \
