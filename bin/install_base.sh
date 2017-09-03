@@ -38,7 +38,6 @@ install_brew() {
 	(
 	ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)";
 	brew update && brew install \
-		awscli \
 		bash-completion \
 		bc \
 		bzip2 \
