@@ -124,4 +124,4 @@ alias pubkey="more ~/.ssh/id_ed25519.pub | pbcopy | echo '=> Public key copied t
 alias prikey="more ~/.ssh/id_ed25519 | pbcopy | echo '=> Private key copied to pasteboard.'"
 
 # Home Alias
-alias home="ssh aherrera@192.168.86.31"
+alias home="ssh aherrera@192.168.86.89"

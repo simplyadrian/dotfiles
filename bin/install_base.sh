@@ -31,6 +31,7 @@ base() {
 	install_docker
 	install_scripts
 	configure_vim
+    install_golang
 }
 
 # install homebrew and packages
@@ -126,6 +127,80 @@ configure_vim() {
 	fi
 	)
 }
+# install/update golang from source
+install_golang() {
+	export GO_VERSION
+	GO_VERSION=$(curl -sSL "https://golang.org/VERSION?m=text")
+	export GO_SRC=/usr/local/go
+
+	# if we are passing the version
+	if [[ ! -z "$1" ]]; then
+		GO_VERSION=$1
+	fi
+
+	# purge old src
+	if [[ -d "$GO_SRC" ]]; then
+		sudo rm -rf "$GO_SRC"
+		sudo rm -rf "$GOPATH"
+	fi
+
+	GO_VERSION=${GO_VERSION#go}
+
+	# subshell
+	(
+	curl -sSL "https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz" | sudo tar -v -C /usr/local -xz
+	local user="$USER"
+	# rebuild stdlib for faster builds
+	sudo chown -R "${user}" /usr/local/go/pkg
+	CGO_ENABLED=0 go install -a -installsuffix cgo std
+	)
+
+	# get commandline tools
+	(
+	set -x
+	set +e
+	go get github.com/golang/lint/golint
+	go get golang.org/x/tools/cmd/cover
+	go get golang.org/x/review/git-codereview
+	go get golang.org/x/tools/cmd/goimports
+	go get golang.org/x/tools/cmd/gorename
+	go get golang.org/x/tools/cmd/guru
+
+	go get github.com/jessfraz/apk-file
+	go get github.com/jessfraz/audit
+	go get github.com/jessfraz/certok
+	go get github.com/jessfraz/cliaoke
+	go get github.com/jessfraz/ghb0t
+	go get github.com/jessfraz/junk/sembump
+	go get github.com/jessfraz/netns
+	go get github.com/jessfraz/pastebinit
+	go get github.com/jessfraz/pepper
+	go get github.com/jessfraz/reg
+	go get github.com/jessfraz/udict
+	go get github.com/jessfraz/weather
+
+	go get github.com/axw/gocov/gocov
+	go get github.com/crosbymichael/gistit
+	go get github.com/davecheney/httpstat
+	go get github.com/FiloSottile/gvt
+	go get github.com/FiloSottile/vendorcheck
+	go get github.com/google/gops
+	go get github.com/jstemmer/gotags
+	go get github.com/nsf/gocode
+	go get github.com/rogpeppe/godef
+	go get github.com/cbednarski/hostess/cmd/hostess
+
+	# do special things for k8s GOPATH
+	mkdir -p "${GOPATH}/src/k8s.io"
+	kubes_repos=( community kubernetes release test-infra )
+	for krepo in "${kubes_repos[@]}"; do
+		git clone "https://github.com/kubernetes/${krepo}.git" "${GOPATH}/src/k8s.io/${krepo}"
+		cd "${GOPATH}/src/k8s.io/${krepo}"
+		git remote set-url --push origin no_push
+		git remote add jessfraz "https://github.com/jessfraz/${krepo}.git"
+	done
+	)
+}
 
 usage() {
 	echo -e "install_base.sh\n\tThis script installs my basic packages for a Mac laptop\n"
@@ -134,6 +209,7 @@ usage() {
 	echo "install_docker            - install docker for macosx"
 	echo "install_scripts           - install custom scripts and binaries from various sources"
 	echo "configure_vim             - configure neovim."
+	echo "install_golang            - install golang from source"
 }
 
 main() {
@@ -156,6 +232,9 @@ main() {
 	elif [[ $cmd == "configure_vim" ]]; then
 
 		configure_vim
+	elif [[ $cmd == "install_golang" ]]; then
+
+		install_golang
     else
 		usage
 	fi
