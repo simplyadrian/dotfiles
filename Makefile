@@ -1,5 +1,7 @@
 .PHONY: all base bin dotfiles etc test shellcheck
 
+PLATFROM := $(shell uname)
+
 all: base bin dotfiles etc
 
 base:
@@ -14,19 +16,38 @@ bin:
 	done
 
 dotfiles:
-	# add aliases for dotfiles
-	for file in $(shell find $(CURDIR) -name ".*" -not -name ".gitignore" -not -name ".travis.yml" -not -name ".git" -not -name ".*.swp"); do \
-		f=$$(basename $$file); \
-		ln -sfn $$file $(HOME)/$$f; \
-	done; \
-	ln -fn $(CURDIR)/gitignore $(HOME)/.gitignore;
+	ifeq [[ $$PLATFROM == 'Darwin' ]]; then
+		# add aliases for dotfiles
+		for file in $(shell find $(CURDIR) -name ".*" -not -name ".gitignore" -not -name ".travis.yml" -not -name ".git"\
+				-not -name ".*.swp" -not -name ".x*" -not -name ".i3" -not -name ".urxvt"); do \
+			f=$$(basename $$file); \
+			ln -sfn $$file $(HOME)/$$f; \
+		done; \
+		ln -fn $(CURDIR)/gitignore $(HOME)/.gitignore;
+	else
+		# add aliases for dotfiles
+		for file in $(shell find $(CURDIR) -name ".*" -not -name ".gitignore" -not -name ".travis.yml" -not -name ".git" -not -name ".*.swp" ); do \
+			f=$$(basename $$file); \
+			ln -sfn $$file $(HOME)/$$f; \
+		done; \
+		ln -fn $(CURDIR)/gitignore $(HOME)/.gitignore;
+	endif
 
 etc:
-	for file in $(shell find $(CURDIR)/etc -type f -not -name ".*.swp"); do \
-		f=$$(echo $$file | sed -e 's|$(CURDIR)||'); \
-		sudo mkdir -p $$f; \
-		sudo ln -f $$file $$f; \
-	done
+	ifeq [[ $$PLATFORM == 'Darwin' ]]; then
+		for file in $(shell find $(CURDIR)/etc -type f -not -name ".*.swp" -not -name "X11" -not -name "apt" -not -name "docker"\
+				-not -name "fonts" -not -name "slim.conf" -not -name "systemd" ); do \
+			f=$$(echo $$file | sed -e 's|$(CURDIR)||'); \
+			sudo mkdir -p $$f; \
+			sudo ln -f $$file $$f; \
+		done
+	else
+		for file in $(shell find $(CURDIR)/etc -type f -not -name ".*.swp"); do \
+			f=$$(echo $$file | sed -e 's|$(CURDIR)||'); \
+			sudo mkdir -p $$f; \
+			sudo ln -f $$file $$f; \
+		done
+	endif
 
 test: shellcheck
 

@@ -176,6 +176,7 @@ setup_sources_min() {
 		curl \
 		dirmngr \
 		lsb-release \
+		gnupg2 \
 		--no-install-recommends
 
 	# hack for latest git (don't judge)
