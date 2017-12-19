@@ -1,10 +1,38 @@
 #!/bin/bash
 set -e
+set -o pipefail
+
+unamestr=`uname`
+if [[ "$unamestr" == 'Darwin' ]]; then
+	platform='Darwin'
+elif [[ "$unamestr" == 'Linux' ]]; then
+	platform='Linux'
+else
+	platform='unknown'
+fi
 
 # install.sh
-#	This script installs my basic setup for a Mac laptop
 
-base() {
+install() {
+	if [[ $platform == 'Darwin' ]]; then
+		mac_conf
+		install_brew
+		install_dockerformac
+		install_scripts
+		install_golang
+		configure_vim
+	elif [[ $platform == 'Linux' ]]; then
+		setup_sources
+		install_linux_base
+		install_wmapps
+		install_docker
+		install_scripts
+		install_golang
+		configure_vim
+	fi
+}
+
+mac_conf() {
 	# the utter bare minimal shit
 	defaults write com.apple.finder AppleShowAllFiles YES; # show hidden files
 	defaults write com.apple.dock tilesize -int 36; # smaller icon sizes in Dock
@@ -26,12 +54,6 @@ base() {
 		tr -d '\n')
 	softwareupdate -i "$PROD" --verbose;
 	echo "XCode has been installed/Updated."
-
-	install_brew
-	install_docker
-	install_scripts
-	configure_vim
-    install_golang
 }
 
 # install homebrew and packages
@@ -83,7 +105,7 @@ install_brew() {
 	)
 }
 # install docker for macosx
-install_docker() {
+install_dockerformac() {
 	curl -o /tmp/Docker.dmg -sSL https://download.docker.com/mac/stable/Docker.dmg
 	hdiutil attach /tmp/Docker.dmg
 	sudo /bin/cp /Volumes/Docker/Docker.app/Contents/Library/LaunchServices/com.docker.vmnetd /Library/PrivilegedHelperTools
@@ -93,6 +115,276 @@ install_docker() {
 	sudo /bin/launchctl load /Library/LaunchDaemons/com.docker.vmnetd.plist
 	hdiutil detach /Volumes/Docker
 	echo "Docker has been installed."
+}
+
+# setup sudo for a user
+# because fuck typing that shit all the time
+# just have a decent password
+# and lock your computer when you aren't using it
+# if they have your password they can sudo anyways
+# so its pointless
+# i know what the fuck im doing ;)
+setup_sudo() {
+	# add user to sudoers
+	adduser "$TARGET_USER" sudo
+
+	# add user to systemd groups
+	# then you wont need sudo to view logs and shit
+	gpasswd -a "$TARGET_USER" systemd-journal
+	gpasswd -a "$TARGET_USER" systemd-network
+
+	# add go path to secure path
+	{ \
+		echo -e 'Defaults	secure_path="/usr/local/go/bin:/home/aherrera/.go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"'; \
+		echo -e 'Defaults	env_keep += "ftp_proxy http_proxy https_proxy no_proxy GOPATH EDITOR"'; \
+		echo -e "${TARGET_USER} ALL=(ALL) NOPASSWD:ALL"; \
+		echo -e "${TARGET_USER} ALL=NOPASSWD: /sbin/ifconfig, /sbin/ifup, /sbin/ifdown, /sbin/ifquery"; \
+	} >> /etc/sudoers
+
+	# setup downloads folder as tmpfs
+	# that way things are removed on reboot
+	# i like things clean but you may not want this
+	mkdir -p "/home/$TARGET_USER/Downloads"
+	echo -e "\n# tmpfs for downloads\ntmpfs\t/home/${TARGET_USER}/Downloads\ttmpfs\tnodev,nosuid,size=2G\t0\t0" >> /etc/fstab
+}
+
+setup_sources_min() {
+	apt-get update
+	apt-get install -y \
+		apt-transport-https \
+		ca-certificates \
+		curl \
+		dirmngr \
+		lsb-release \
+		--no-install-recommends
+
+	# hack for latest git (don't judge)
+	cat <<-EOF > /etc/apt/sources.list.d/git-core.list
+	deb http://ppa.launchpad.net/git-core/ppa/ubuntu xenial main
+	deb-src http://ppa.launchpad.net/git-core/ppa/ubuntu xenial main
+	EOF
+
+	# neovim
+	cat <<-EOF > /etc/apt/sources.list.d/neovim.list
+	deb http://ppa.launchpad.net/neovim-ppa/unstable/ubuntu xenial main
+	deb-src http://ppa.launchpad.net/neovim-ppa/unstable/ubuntu xenial main
+	EOF
+
+    # plexmedia
+    cat <<-EOF > /etc/apt/sources.list.d/plexmediaserver.list
+    deb https://downloads.plex.tv/repo/deb/ ./public main
+	EOF
+
+	# add the git-core ppa gpg key
+	apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys E1DD270288B4E6030699E45FA1715D88E1DF1F24
+
+	# add the neovim ppa gpg key
+	apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 9DBB0BE9366964F134855E2255F96FCF8231B6DD
+
+	# turn off translations, speed up apt-get update
+	mkdir -p /etc/apt/apt.conf.d
+	echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/99translations
+}
+
+# sets up apt sources
+# assumes you are going to use debian stretch
+setup_sources() {
+	setup_sources_min;
+
+	cat <<-EOF > /etc/apt/sources.list
+	deb http://httpredir.debian.org/debian stretch main contrib non-free
+	deb-src http://httpredir.debian.org/debian/ stretch main contrib non-free
+
+	deb http://httpredir.debian.org/debian/ stretch-updates main contrib non-free
+	deb-src http://httpredir.debian.org/debian/ stretch-updates main contrib non-free
+
+	deb http://security.debian.org/ stretch/updates main contrib non-free
+	deb-src http://security.debian.org/ stretch/updates main contrib non-free
+
+	deb http://httpredir.debian.org/debian/ jessie-backports main contrib non-free
+	deb-src http://httpredir.debian.org/debian/ jessie-backports main contrib non-free
+
+	deb http://httpredir.debian.org/debian experimental main contrib non-free
+	deb-src http://httpredir.debian.org/debian experimental main contrib non-free
+
+	EOF
+
+	# add docker apt repo
+	cat <<-EOF > /etc/apt/sources.list.d/docker.list
+	deb https://apt.dockerproject.org/repo debian-stretch main
+	deb https://apt.dockerproject.org/repo debian-stretch testing
+	deb https://apt.dockerproject.org/repo debian-stretch experimental
+	EOF
+
+	# Create an environment variable for the correct distribution
+	CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)"
+	export CLOUD_SDK_REPO
+
+	# Add the Cloud SDK distribution URI as a package source
+	echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" > /etc/apt/sources.list.d/google-cloud-sdk.list
+
+	# Import the Google Cloud Platform public key
+	curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+
+	# Add the Google Chrome distribution URI as a package source
+	echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
+
+	# Import the Google Chrome public key
+	curl https://dl.google.com/linux/linux_signing_key.pub | apt-key add -
+
+	# add docker gpg key
+	apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+
+}
+
+install_linux_base_min() {
+	apt-get update
+	apt-get -y upgrade
+
+	apt-get install -y \
+		adduser \
+		automake \
+		bash-completion \
+		bc \
+		bzip2 \
+		ca-certificates \
+		coreutils \
+		curl \
+		dnsutils \
+		file \
+		findutils \
+		gcc \
+		git \
+		gnupg \
+		gnupg2 \
+		gnupg-agent \
+		grep \
+		gzip \
+		hostname \
+		indent \
+		iptables \
+		jq \
+		less \
+		libc6-dev \
+		locales \
+		lsof \
+		make \
+		mount \
+		net-tools \
+		neovim \
+		pinentry-curses \
+		rxvt-unicode-256color \
+		scdaemon \
+		silversearcher-ag \
+		ssh \
+		strace \
+		sudo \
+		tar \
+		tree \
+		tzdata \
+		unzip \
+		xclip \
+		xcompmgr \
+		xz-utils \
+		zip \
+		--no-install-recommends
+
+	apt-get autoremove
+	apt-get autoclean
+	apt-get clean
+
+}
+
+# installs base packages
+# the utter bare minimal shit
+install_linux_base() {
+	install_linux_base_min;
+
+	apt-get update
+	apt-get -y upgrade
+
+	apt-get install -y \
+		alsa-utils \
+		apparmor \
+		bridge-utils \
+		cgroupfs-mount \
+		google-cloud-sdk \
+		libapparmor-dev \
+		libltdl-dev \
+		libseccomp-dev \
+		network-manager \
+		openvpn \
+		s3cmd \
+		--no-install-recommends
+
+	setup_sudo
+
+	apt-get autoremove
+	apt-get autoclean
+	apt-get clean
+
+}
+
+# install stuff for i3 window manager
+install_wmapps() {
+	local pkgs=( feh i3 i3lock i3status scrot slim suckless-tools )
+
+	apt install -y "${pkgs[@]}" --no-install-recommends
+
+	# add xorg conf
+	curl -sSL https://raw.githubusercontent.com/jessfraz/dotfiles/master/etc/X11/xorg.conf > /etc/X11/xorg.conf
+
+	# pretty fonts
+	curl -sSL https://raw.githubusercontent.com/jessfraz/dotfiles/master/etc/fonts/local.conf > /etc/fonts/local.conf
+
+	echo "Fonts file setup successfully now run:"
+	echo "	dpkg-reconfigure fontconfig-config"
+	echo "with settings: "
+	echo "	Autohinter, Automatic, No."
+	echo "Run: "
+	echo "	dpkg-reconfigure fontconfig"
+}
+
+# installs docker master
+# and adds necessary items to boot params
+install_docker() {
+	# create docker group
+	sudo groupadd docker
+	sudo gpasswd -a "$TARGET_USER" docker
+
+	# Include contributed completions
+	mkdir -p /etc/bash_completion.d
+	curl -sSL -o /etc/bash_completion.d/docker https://raw.githubusercontent.com/docker/docker-ce/master/components/cli/contrib/completion/bash/docker
+
+
+	# get the binary
+	local tmp_tar=/tmp/docker.tgz
+	local binary_uri="https://download.docker.com/linux/static/edge/x86_64"
+	local docker_version
+	docker_version=$(curl -sSL "https://api.github.com/repos/docker/docker-ce/releases/latest" | jq --raw-output .tag_name)
+	docker_version=${docker_version#v}
+	# local docker_sha256
+	# docker_sha256=$(curl -sSL "${binary_uri}/docker-${docker_version}.tgz.sha256" | awk '{print $1}')
+	(
+	set -x
+	curl -fSL "${binary_uri}/docker-${docker_version}.tgz" -o "${tmp_tar}"
+	# echo "${docker_sha256} ${tmp_tar}" | sha256sum -c -
+	tar -C /usr/local/bin --strip-components 1 -xzvf "${tmp_tar}"
+	rm "${tmp_tar}"
+	docker -v
+	)
+	chmod +x /usr/local/bin/docker*
+
+	curl -sSL https://raw.githubusercontent.com/jessfraz/dotfiles/master/etc/systemd/system/docker.service > /etc/systemd/system/docker.service
+	curl -sSL https://raw.githubusercontent.com/jessfraz/dotfiles/master/etc/systemd/system/docker.socket > /etc/systemd/system/docker.socket
+
+	systemctl daemon-reload
+	systemctl enable docker
+
+	# update grub with docker configs and power-saving items
+	sed -i.bak 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1 pcie_aspm=force apparmor=1 security=apparmor"/g' /etc/default/grub
+	echo "Docker has been installed. If you want memory management & swap"
+	echo "run update-grub & reboot"
 }
 
 # install custom scripts/binaries
@@ -110,23 +402,6 @@ install_scripts() {
 	echo "The lolcat binary has been installed"
 }
 
-# configure neovim with jessfraz's repo
-configure_vim() {
-	# create subshell
-	(
-	cd "$HOME"
-
-	if [ -d "${HOME}/.vim" ]; then
-		rm -rf "${HOME}/.vim"
-		git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
-		ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
-	else
-		# install .vim files
-		git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
-		ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
-	fi
-	)
-}
 # install/update golang from source
 install_golang() {
 	export GO_VERSION
@@ -202,14 +477,66 @@ install_golang() {
 	)
 }
 
+# configure neovim with jessfraz's repo
+configure_vim() {
+	# create subshell
+	(
+	cd "$HOME"
+
+	if [ -d "${HOME}/.vim" ]; then
+		rm -rf "${HOME}/.vim"
+		git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
+		ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
+	else
+		# install .vim files
+		git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
+		ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
+	fi
+
+	if	[[ $platform == 'Linux' ]]; then
+		sudo mkdir -p /root/.config
+		sudo ln -snf "${HOME}/.vim" /root/.config/nvim
+		sudo ln -snf "${HOME}/.vimrc" /root/.config/nvim/init.vim
+
+		# update alternatives to neovim
+		sudo update-alternatives --install /usr/bin/vi vi "$(which nvim)" 60
+		sudo update-alternatives --config vi
+		sudo update-alternatives --install /usr/bin/vim vim "$(which nvim)" 60
+		sudo update-alternatives --config vim
+		sudo update-alternatives --install /usr/bin/editor editor "$(which nvim)" 60
+		sudo update-alternatives --config editor
+
+		# install things needed for deoplete for vim
+		sudo apt update
+
+		sudo apt install -y \
+			python3-pip \
+			python3-setuptools \
+			--no-install-recommends
+
+		pip3 install -U \
+			setuptools \
+			wheel \
+			neovim
+	else
+		echo "doing nothing since I am a Darwin system"
+	fi
+	)
+}
+
 usage() {
 	echo -e "install_base.sh\n\tThis script installs my basic packages for a Mac laptop\n"
 	echo "Usage:"
-	echo "base                      - install the base packages. including docker and custom scripts and neovim configuration"
-	echo "install_docker            - install docker for macosx"
+	echo "install                   - install the base packages based on OS detection. including docker and custom scripts and neovim configuration"
+	echo "mac_conf                  - configure macbook environment with bare minimum"
+	echo "install_dockerformac      - install docker for macosx"
+	echo "install_docker			- install docker on a debian system"
+	echo "install_wmapps			- install i3 window manager on a debian system"
+	echo "setup sources				- sets up apt repositories on a debian stretch system"
+	echo "install_linux_base		- installs the base packages on a debian stretch system"
 	echo "install_scripts           - install custom scripts and binaries from various sources"
-	echo "configure_vim             - configure neovim."
 	echo "install_golang            - install golang from source"
+	echo "configure_vim             - configure neovim."
 }
 
 main() {
@@ -220,21 +547,36 @@ main() {
 		exit 1
 	fi
 
-	if [[ $cmd == "base" ]]; then
+	if [[ $cmd == "install" ]]; then
 
-		base
-	elif [[ $cmd == "install_docker" ]]; then
+		install
+	elif [[ $cmd == "mac_conf" ]]; then
+
+		mac_conf
+	elif [[ $cmd == "install_dockerformac" ]]; then
+
+		install_dockerformac
+    elif [[ $cmd == "install_docker" ]]; then
 
 		install_docker
+    elif [[ $cmd == "install_wmapps" ]]; then
+
+		install_wmapps
+    elif [[ $cmd == "setup_sources" ]]; then
+
+		setup_sources
+    elif [[ $cmd == "install_linux_base" ]]; then
+
+		install_linux_base
 	elif [[ $cmd == "install_scripts" ]]; then
 
 		install_scripts
-	elif [[ $cmd == "configure_vim" ]]; then
-
-		configure_vim
 	elif [[ $cmd == "install_golang" ]]; then
 
 		install_golang
+	elif [[ $cmd == "configure_vim" ]]; then
+
+		configure_vim
     else
 		usage
 	fi

@@ -4,7 +4,7 @@ all: base bin dotfiles etc
 
 base:
 	# do install of all base packages
-	$(CURDIR)/bin/install_base.sh base
+	$(CURDIR)/bin/install_base.sh install
 
 bin:
 	# add aliases for things in bin
