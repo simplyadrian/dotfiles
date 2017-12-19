@@ -16,6 +16,7 @@ bin:
 	done
 
 ifeq ( $(PLATFORM), Darwin )
+
 dotfiles:
 	# add aliases for dotfiles
 	for file in $(shell find $(CURDIR) -name ".*" -not -name ".gitignore" -not -name ".travis.yml" -not -name ".git" -not -name ".*.swp" -not -name ".x*" -not -name ".i3" -not -name ".urxvt"); do \
@@ -23,7 +24,9 @@ dotfiles:
 		ln -sfn $$file $(HOME)/$$f; \
 	done; \
 	ln -fn $(CURDIR)/gitignore $(HOME)/.gitignore;
+
 else
+
 dotfiles:
 	# add aliases for dotfiles
 	for file in $(shell find $(CURDIR) -name ".*" -not -name ".gitignore" -not -name ".travis.yml" -not -name ".git" -not -name ".*.swp" ); do \
@@ -31,23 +34,27 @@ dotfiles:
 		ln -sfn $$file $(HOME)/$$f; \
 	done; \
 	ln -fn $(CURDIR)/gitignore $(HOME)/.gitignore;
+
 endif
 
 ifeq ( $(PLATFORM), Darwin )
+
 etc:
-	for file in $(shell find $(CURDIR)/etc -type f -not -name ".*.swp" -not -name "X11" -not -name "apt" -not -name "docker"\
-			-not -name "fonts" -not -name "slim.conf" -not -name "systemd" ); do \
+	for file in $(shell find $(CURDIR)/etc -type f -not -name ".*.swp" -not -name "X11" -not -name "apt" -not -name "docker" -not -name "fonts" -not -name "slim.conf" -not -name "systemd" ); do \
 		f=$$(echo $$file | sed -e 's|$(CURDIR)||'); \
 		sudo mkdir -p $$f; \
 		sudo ln -f $$file $$f; \
 	done
+
 else
+
 etc:
 	for file in $(shell find $(CURDIR)/etc -type f -not -name ".*.swp"); do \
 		f=$$(echo $$file | sed -e 's|$(CURDIR)||'); \
 		sudo mkdir -p $$f; \
 		sudo ln -f $$file $$f; \
 	done
+
 endif
 
 test: shellcheck
