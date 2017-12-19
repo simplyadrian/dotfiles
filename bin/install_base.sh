@@ -22,14 +22,34 @@ install() {
 		install_golang
 		configure_vim
 	elif [[ $platform == 'Linux' ]]; then
+		export DEBIAN_FRONTEND=noninteractive
+		get_user
 		setup_sources
 		install_linux_base
 		install_wmapps
 		install_docker
 		install_scripts
 		install_golang
-		configure_vim
 	fi
+}
+
+# Choose a user account to use for this installation
+get_user() {
+    if [ -z "${TARGET_USER-}" ]; then
+        PS3='Which user account should be used? '
+        mapfile -t options < <(find /home/* -maxdepth 0 -printf "%f\\n" -type d)
+        select opt in "${options[@]}"; do
+            readonly TARGET_USER=$opt
+            break
+        done
+    fi
+}
+
+check_is_sudo() {
+    if [ "$EUID" -ne 0 ]; then
+        echo "Please run as root."
+        exit
+    fi
 }
 
 mac_conf() {
@@ -82,7 +102,7 @@ install_brew() {
 		less \
 		lsof \
 		make \
-		macvim \
+		neovim \
 		ngrep \
 		openvpn \
 		s3cmd \
@@ -170,11 +190,6 @@ setup_sources_min() {
 	deb-src http://ppa.launchpad.net/neovim-ppa/unstable/ubuntu xenial main
 	EOF
 
-    # plexmedia
-    cat <<-EOF > /etc/apt/sources.list.d/plexmediaserver.list
-    deb https://downloads.plex.tv/repo/deb/ ./public main
-	EOF
-
 	# add the git-core ppa gpg key
 	apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys E1DD270288B4E6030699E45FA1715D88E1DF1F24
 
@@ -216,6 +231,11 @@ setup_sources() {
 	deb https://apt.dockerproject.org/repo debian-stretch experimental
 	EOF
 
+	# plexmedia
+	cat <<-EOF > /etc/apt/sources.list.d/plexmediaserver.list
+	deb https://downloads.plex.tv/repo/deb/ ./public main
+	EOF
+
 	# Create an environment variable for the correct distribution
 	CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)"
 	export CLOUD_SDK_REPO
@@ -253,6 +273,7 @@ install_linux_base_min() {
 		dnsutils \
 		file \
 		findutils \
+		fortune \
 		gcc \
 		git \
 		gnupg \
@@ -483,22 +504,33 @@ configure_vim() {
 	(
 	cd "$HOME"
 
-	if [ -d "${HOME}/.vim" ]; then
-		rm -rf "${HOME}/.vim"
-		git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
-		ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
-	else
-		# install .vim files
-		git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
-		ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
-	fi
+	if [[ $platform == 'Darwin' ]]; then
 
-	if	[[ $platform == 'Linux' ]]; then
+		if [ -d "${HOME}/.vim" ]; then
+			rm -rf "${HOME}/.vim"
+			git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
+			ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
+		else
+			# install .vim files
+			git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
+			ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
+		fi
+	elif [[ $platform == 'Linux' ]]; then
+		git clone --recursive git@github.com:jessfraz/.vim.git "${HOME}/.vim"
+		ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
+		sudo ln -snf "${HOME}/.vim" /root/.vim
+		sudo ln -snf "${HOME}/.vimrc" /root/.vimrc
+
+		# alias vim dotfiles to neovim
+		mkdir -p "${XDG_CONFIG_HOME:=$HOME/.config}"
+		ln -snf "${HOME}/.vim" "${XDG_CONFIG_HOME}/nvim"
+		ln -snf "${HOME}/.vimrc" "${XDG_CONFIG_HOME}/nvim/init.vim"
+		# do the same for root
 		sudo mkdir -p /root/.config
 		sudo ln -snf "${HOME}/.vim" /root/.config/nvim
 		sudo ln -snf "${HOME}/.vimrc" /root/.config/nvim/init.vim
 
-		# update alternatives to neovim
+		#update alternatives to neovim
 		sudo update-alternatives --install /usr/bin/vi vi "$(which nvim)" 60
 		sudo update-alternatives --config vi
 		sudo update-alternatives --install /usr/bin/vim vim "$(which nvim)" 60
@@ -518,8 +550,6 @@ configure_vim() {
 			setuptools \
 			wheel \
 			neovim
-	else
-		echo "doing nothing since I am a Darwin system"
 	fi
 	)
 }
@@ -533,7 +563,7 @@ usage() {
 	echo "install_docker			- install docker on a debian system"
 	echo "install_wmapps			- install i3 window manager on a debian system"
 	echo "setup sources				- sets up apt repositories on a debian stretch system"
-	echo "install_linux_base		- installs the base packages on a debian stretch system"
+	echo "install_linux_base_min	- installs the base packages on a debian stretch system"
 	echo "install_scripts           - install custom scripts and binaries from various sources"
 	echo "install_golang            - install golang from source"
 	echo "configure_vim             - configure neovim."
@@ -548,30 +578,44 @@ main() {
 	fi
 
 	if [[ $cmd == "install" ]]; then
+		check_is_sudo
 
 		install
 	elif [[ $cmd == "mac_conf" ]]; then
+		check_is_sudo
 
 		mac_conf
 	elif [[ $cmd == "install_dockerformac" ]]; then
+		check_is_sudo
 
 		install_dockerformac
-    elif [[ $cmd == "install_docker" ]]; then
+	elif [[ $cmd == install_linux_base_min ]]; then
+		check_is_sudo
+
+		setup_sources_min
+
+		install_linux_base_min
+	elif [[ $cmd == "install_docker" ]]; then
+		check_is_sudo
 
 		install_docker
-    elif [[ $cmd == "install_wmapps" ]]; then
+	elif [[ $cmd == "install_wmapps" ]]; then
+		check_is_sudo
 
 		install_wmapps
-    elif [[ $cmd == "setup_sources" ]]; then
+	elif [[ $cmd == "setup_sources" ]]; then
 
 		setup_sources
-    elif [[ $cmd == "install_linux_base" ]]; then
+	elif [[ $cmd == "install_linux_base" ]]; then
+		check_is_sudo
 
 		install_linux_base
 	elif [[ $cmd == "install_scripts" ]]; then
+		check_is_sudo
 
 		install_scripts
 	elif [[ $cmd == "install_golang" ]]; then
+		check_is_sudo
 
 		install_golang
 	elif [[ $cmd == "configure_vim" ]]; then
