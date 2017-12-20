@@ -30,15 +30,10 @@ bindsym $mod+d exec i3-dmenu-desktop
 # kill focused window
 bindsym $mod+Shift+q kill
 
-# spotify: no border
-for_window [class="^Spotify$"] border none
-for_window [class="^Spotify Premium$"] border none
-
 # skype, steam, wine: float Gimp
 for_window [class="Code"] floating enable
 for_window [class="Firefox"] floating enable
 for_window [class="Gimp"] floating enable
-for_window [class="google-chrome"] floating enable
 for_window [class="Google-chrome"] floating enable
 for_window [class="Keybase"] floating enable
 for_window [class="Neoman"] floating enable
@@ -46,7 +41,6 @@ for_window [class="NES"] floating enable
 for_window [class="Pidgin"] floating enable
 for_window [class="Portal"] floating enable
 for_window [class="RStudio"] floating enable
-for_window [class="Skype"] floating enable
 for_window [class="Slack"] floating enable
 for_window [class="Steam"] floating enable
 for_window [class="Tor Browser"] floating enable
@@ -146,14 +140,6 @@ bindsym XF86AudioMicMute exec amixer set Capture toggle # mute mic
 bindsym XF86MonBrightnessUp exec sudo light -A 5 # increase screen brightness
 bindsym XF86MonBrightnessDown exec sudo light -U 5 # decrease screen brightness
 
-# Screenshots
-# Screenshot fullscreen
-bindsym Print exec "scrot -q 100 ${HOME}'/Pictures/Screenshots/%Y-%m-%d-%H-%M-%S_$wx$h.png' -e ${HOME}'/google-cloud-sdk/bin/gsutil cp -a public-read $f gs://misc.j3ss.co/screenshots/ && echo https://misc.j3ss.co/screenshots/$n | xclip -i -selection clipboard'"
-# Screenshot with selection
-bindsym $mod+Print exec "sleep 0.4; scrot -q 100 -s ${HOME}'/Pictures/Screenshots/%Y-%m-%d-%H-%M-%S_$wx$h.png' -e ${HOME}'/google-cloud-sdk/bin/gsutil cp -a public-read $f gs://misc.j3ss.co/screenshots/ && echo https://misc.j3ss.co/screenshots/$n | xclip -i -selection clipboard'"
-# Screenshot current focused window
-bindsym Shift+Print exec "scrot -q 100 -u ${HOME}'/Pictures/Screenshots/%Y-%m-%d-%H-%M-%S_$wx$h.png' -e ${HOME}'/google-cloud-sdk/bin/gsutil cp -a public-read $f gs://misc.j3ss.co/screenshots/ && echo https://misc.j3ss.co/screenshots/$n | xclip -i -selection clipboard'"
-
 # reload the configuration file
 bindsym $mod+Shift+c reload
 # restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
@@ -196,8 +182,7 @@ bar {
 # auto run commands
 # set background
 # use the same background as slim (login manager)
-# this file is an alias to something in /home/jessie/Pictures
-exec --no-startup-id feh --bg-fill ${HOME}/Pictures/central-park2.jpg
+exec --no-startup-id feh --bg-fill ${HOME}/Pictures/starwars.jpeg
 
 # run the merge for good colors
 exec xrdb -merge $HOME/.Xresources
