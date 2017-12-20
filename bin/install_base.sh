@@ -113,7 +113,8 @@ install_brew() {
 		nmap \
 		openssl \
 		python \
-		tor ;
+		tor \
+		xclip;
 	brew tap caskroom/versions ;
 	brew cask install --appdir="Applications" \
 		google-chrome \

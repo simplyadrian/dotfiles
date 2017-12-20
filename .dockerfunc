@@ -65,7 +65,7 @@ nginx_config(){
 	docker restart nginx
 
 	# add host to /etc/hosts
-	hostess add "$server" 127.0.0.1
+	sudo hostess add "$server" 127.0.0.1
 
 	# open browser
 	browser-exec "http://${server}"
@@ -102,7 +102,7 @@ cadvisor(){
 		--name cadvisor \
 		google/cadvisor
 
-	hostess add cadvisor "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' cadvisor)"
+	sudo hostess add cadvisor "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' cadvisor)"
 	browser-exec "http://cadvisor:8080"
 }
 chrome(){
@@ -173,7 +173,7 @@ consul(){
 		-dc neverland \
 		-bind 0.0.0.0
 
-	hostess add consul "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' consul)"
+	sudo hostess add consul "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' consul)"
 	browser-exec "http://consul:8500"
 }
 dcos(){
@@ -346,7 +346,7 @@ nginx(){
 		nginx
 
 	# add domain to hosts & open nginx
-	sudo hostess add jess 127.0.0.1
+	sudo hostess add aherrera 127.0.0.1
 }
 nmap(){
 	docker run --rm -it \
@@ -365,7 +365,7 @@ privoxy(){
 		--name privoxy \
 		${DOCKER_REPO_PREFIX}/privoxy
 
-	hostess add privoxy "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' privoxy)"
+	sudo hostess add privoxy "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' privoxy)"
 }
 rainbowstream(){
 	docker run -it --rm \
@@ -455,7 +455,7 @@ torproxy(){
 		--name torproxy \
 		${DOCKER_REPO_PREFIX}/tor-proxy
 
-	hostess add torproxy "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' torproxy)"
+	sudo hostess add torproxy "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' torproxy)"
 }
 traceroute(){
 	docker run --rm -it \
@@ -476,7 +476,7 @@ transmission(){
 		${DOCKER_REPO_PREFIX}/transmission
 
 
-	hostess add transmission "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' transmission)"
+	sudo hostess add transmission "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' transmission)"
 	browser-exec "http://transmission:9091"
 }
 wireshark(){

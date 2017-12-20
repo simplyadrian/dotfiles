@@ -17,3 +17,4 @@ Session.vim
 .extra
 .nginx/conf.d/*
 .aws/credentials
+.i3/logfile
