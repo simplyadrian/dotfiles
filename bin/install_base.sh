@@ -8,8 +8,7 @@ PLATFORM=`uname`
 
 install() {
 	if [[ $PLATFORM == 'Darwin' ]]; then
-		mac_conf
-		install_brew
+		install_mac_base
 		install_dockerformac
 		install_scripts
 		configure_vim
@@ -18,10 +17,11 @@ install() {
 		get_user
 		setup_sources
 		install_linux_base
-		install_wmapps
 		install_docker
-		install_scripts
 		install_golang
+		install_scripts
+		install_wmapps
+		echo "run installer with configure_vim option without sudo to complete the setup"
 	fi
 }
 
@@ -37,7 +37,38 @@ get_user() {
     fi
 }
 
-mac_conf() {
+# setup sudo for a user
+# because fuck typing that shit all the time
+# just have a decent password
+# and lock your computer when you aren't using it
+# if they have your password they can sudo anyways
+# so its pointless
+# i know what the fuck im doing ;)
+setup_sudo() {
+	# add user to sudoers
+	adduser "$TARGET_USER" sudo
+
+	# add user to systemd groups
+	# then you wont need sudo to view logs and shit
+	gpasswd -a "$TARGET_USER" systemd-journal
+	gpasswd -a "$TARGET_USER" systemd-network
+
+	# add go path to secure path
+	{ \
+		echo -e 'Defaults	secure_path="/usr/local/go/bin:/home/aherrera/.go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"'; \
+		echo -e 'Defaults	env_keep += "ftp_proxy http_proxy https_proxy no_proxy GOPATH EDITOR"'; \
+		echo -e "${TARGET_USER} ALL=(ALL) NOPASSWD:ALL"; \
+		echo -e "${TARGET_USER} ALL=NOPASSWD: /sbin/ifconfig, /sbin/ifup, /sbin/ifdown, /sbin/ifquery"; \
+	} >> /etc/sudoers
+
+	# setup downloads folder as tmpfs
+	# that way things are removed on reboot
+	# i like things clean but you may not want this
+	mkdir -p "/home/$TARGET_USER/Downloads"
+	echo -e "\n# tmpfs for downloads\ntmpfs\t/home/${TARGET_USER}/Downloads\ttmpfs\tnodev,nosuid,size=2G\t0\t0" >> /etc/fstab
+}
+
+install_mac_base_min() {
 	# the utter bare minimal shit
 	defaults write com.apple.finder AppleShowAllFiles YES; # show hidden files
 	defaults write com.apple.dock tilesize -int 36; # smaller icon sizes in Dock
@@ -81,7 +112,8 @@ mac_conf() {
 }
 
 # install homebrew and packages
-install_brew() {
+install_mac_base() {
+	install_mac_base_min;
 	(
 	ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)";
 	brew update && brew install \
@@ -128,49 +160,6 @@ install_brew() {
 		slack ;
 	echo "Completed installing base packages via homebrew"
 	)
-}
-# install docker for macosx
-install_dockerformac() {
-	curl -o /tmp/Docker.dmg -sSL https://download.docker.com/mac/stable/Docker.dmg
-	hdiutil attach /tmp/Docker.dmg
-	sudo /bin/cp /Volumes/Docker/Docker.app/Contents/Library/LaunchServices/com.docker.vmnetd /Library/PrivilegedHelperTools
-	sudo /bin/cp /Applications/Docker.app/Contents/Resources/com.docker.vmnetd.plist /Library/LaunchDaemons/
-	sudo /bin/chmod 544 /Library/PrivilegedHelperTools/com.docker.vmnetd
-	sudo /bin/chmod 644 /Library/LaunchDaemons/com.docker.vmnetd.plist
-	sudo /bin/launchctl load /Library/LaunchDaemons/com.docker.vmnetd.plist
-	hdiutil detach /Volumes/Docker
-	echo "Docker has been installed."
-}
-
-# setup sudo for a user
-# because fuck typing that shit all the time
-# just have a decent password
-# and lock your computer when you aren't using it
-# if they have your password they can sudo anyways
-# so its pointless
-# i know what the fuck im doing ;)
-setup_sudo() {
-	# add user to sudoers
-	adduser "$TARGET_USER" sudo
-
-	# add user to systemd groups
-	# then you wont need sudo to view logs and shit
-	gpasswd -a "$TARGET_USER" systemd-journal
-	gpasswd -a "$TARGET_USER" systemd-network
-
-	# add go path to secure path
-	{ \
-		echo -e 'Defaults	secure_path="/usr/local/go/bin:/home/aherrera/.go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"'; \
-		echo -e 'Defaults	env_keep += "ftp_proxy http_proxy https_proxy no_proxy GOPATH EDITOR"'; \
-		echo -e "${TARGET_USER} ALL=(ALL) NOPASSWD:ALL"; \
-		echo -e "${TARGET_USER} ALL=NOPASSWD: /sbin/ifconfig, /sbin/ifup, /sbin/ifdown, /sbin/ifquery"; \
-	} >> /etc/sudoers
-
-	# setup downloads folder as tmpfs
-	# that way things are removed on reboot
-	# i like things clean but you may not want this
-	mkdir -p "/home/$TARGET_USER/Downloads"
-	echo -e "\n# tmpfs for downloads\ntmpfs\t/home/${TARGET_USER}/Downloads\ttmpfs\tnodev,nosuid,size=2G\t0\t0" >> /etc/fstab
 }
 
 setup_sources_min() {
@@ -352,26 +341,6 @@ install_linux_base() {
 
 }
 
-# install stuff for i3 window manager
-install_wmapps() {
-	local pkgs=( feh i3 i3lock i3status scrot slim suckless-tools )
-
-	apt install -y "${pkgs[@]}" --no-install-recommends
-
-	# add xorg conf
-	curl -sSL https://raw.githubusercontent.com/simplyadrian/dotfiles/master/etc/X11/xorg.conf > /etc/X11/xorg.conf
-
-	# pretty fonts
-	curl -sSL https://raw.githubusercontent.com/simplyadrian/dotfiles/master/etc/fonts/local.conf > /etc/fonts/local.conf
-
-	echo "Fonts file setup successfully now run:"
-	echo "	dpkg-reconfigure fontconfig-config"
-	echo "with settings: "
-	echo "	Autohinter, Automatic, No."
-	echo "Run: "
-	echo "	dpkg-reconfigure fontconfig"
-}
-
 # installs docker master
 # and adds necessary items to boot params
 install_docker() {
@@ -414,19 +383,17 @@ install_docker() {
 	echo "run update-grub & reboot"
 }
 
-# install custom scripts/binaries
-install_scripts() {
-	# install speedtest
-	curl -sSL https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py  > /tmp/speedtest
-	sudo cp /tmp/speedtest /usr/local/bin/speedtest
-	sudo chmod +x /usr/local/bin/speedtest
-	echo "The Speedtest binary has been installed"
-
-	# install lolcat
-	curl -sSL https://raw.githubusercontent.com/tehmaze/lolcat/master/lolcat > /tmp/lolcat
-	sudo cp /tmp/lolcat /usr/local/bin/lolcat
-	sudo chmod +x /usr/local/bin/lolcat
-	echo "The lolcat binary has been installed"
+# install docker for macosx
+install_dockerformac() {
+	curl -o /tmp/Docker.dmg -sSL https://download.docker.com/mac/stable/Docker.dmg
+	hdiutil attach /tmp/Docker.dmg
+	sudo /bin/cp /Volumes/Docker/Docker.app/Contents/Library/LaunchServices/com.docker.vmnetd /Library/PrivilegedHelperTools
+	sudo /bin/cp /Applications/Docker.app/Contents/Resources/com.docker.vmnetd.plist /Library/LaunchDaemons/
+	sudo /bin/chmod 544 /Library/PrivilegedHelperTools/com.docker.vmnetd
+	sudo /bin/chmod 644 /Library/LaunchDaemons/com.docker.vmnetd.plist
+	sudo /bin/launchctl load /Library/LaunchDaemons/com.docker.vmnetd.plist
+	hdiutil detach /Volumes/Docker
+	echo "Docker has been installed."
 }
 
 # install/update golang from source
@@ -504,13 +471,28 @@ install_golang() {
 	)
 }
 
+# install custom scripts/binaries
+install_scripts() {
+	# install speedtest
+	curl -sSL https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py  > /tmp/speedtest
+	sudo cp /tmp/speedtest /usr/local/bin/speedtest
+	sudo chmod +x /usr/local/bin/speedtest
+	echo "The Speedtest binary has been installed"
+
+	# install lolcat
+	curl -sSL https://raw.githubusercontent.com/tehmaze/lolcat/master/lolcat > /tmp/lolcat
+	sudo cp /tmp/lolcat /usr/local/bin/lolcat
+	sudo chmod +x /usr/local/bin/lolcat
+	echo "The lolcat binary has been installed"
+}
+
 # configure neovim with jessfraz's repo
 configure_vim() {
 	# create subshell
 	(
 	cd "$HOME"
 
-	if [[ $platform == 'Darwin' ]]; then
+	if [[ $PLATFORM == 'Darwin' ]]; then
 
 		if [ -d "${HOME}/.vim" ]; then
 			rm -rf "${HOME}/.vim"
@@ -521,7 +503,7 @@ configure_vim() {
 			git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
 			ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
 		fi
-	elif [[ $platform == 'Linux' ]]; then
+	elif [[ $PLATFORM == 'Linux' ]]; then
 		git clone --recursive git@github.com:jessfraz/.vim.git "${HOME}/.vim"
 		ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
 		sudo ln -snf "${HOME}/.vim" /root/.vim
@@ -560,11 +542,30 @@ configure_vim() {
 	)
 }
 
+# install stuff for i3 window manager
+install_wmapps() {
+	local pkgs=( feh i3 i3lock i3status scrot slim suckless-tools )
+
+	apt install -y "${pkgs[@]}" --no-install-recommends
+
+	# add xorg conf
+	curl -sSL https://raw.githubusercontent.com/simplyadrian/dotfiles/master/etc/X11/xorg.conf > /etc/X11/xorg.conf
+
+	# pretty fonts
+	curl -sSL https://raw.githubusercontent.com/simplyadrian/dotfiles/master/etc/fonts/local.conf > /etc/fonts/local.conf
+
+	echo "Fonts file setup successfully now run:"
+	echo "	dpkg-reconfigure fontconfig-config"
+	echo "with settings: "
+	echo "	Autohinter, Automatic, No."
+	echo "Run: "
+	echo "	dpkg-reconfigure fontconfig"
+}
+
 usage() {
 	echo -e "install_base.sh\n\tThis script installs my basic packages for a Mac laptop\n"
 	echo "Usage:"
 	echo "install                   - install the base packages based on OS detection. including docker and custom scripts and neovim configuration"
-	echo "mac_conf                  - configure macbook environment with bare minimum"
 	echo "configure_vim             - configure neovim."
 }
 
@@ -579,9 +580,6 @@ main() {
 	if [[ $cmd == "install" ]]; then
 
 		install
-	elif [[ $cmd == "mac_conf" ]]; then
-
-		mac_conf
 	elif [[ $cmd == "configure_vim" ]]; then
 
 		configure_vim
