@@ -2,26 +2,18 @@
 set -e
 set -o pipefail
 
-unamestr=`uname`
-if [[ "$unamestr" == 'Darwin' ]]; then
-	platform='Darwin'
-elif [[ "$unamestr" == 'Linux' ]]; then
-	platform='Linux'
-else
-	platform='unknown'
-fi
+PLATFORM=`uname`
 
 # install.sh
 
 install() {
-	if [[ $platform == 'Darwin' ]]; then
+	if [[ $PLATFORM == 'Darwin' ]]; then
 		mac_conf
 		install_brew
 		install_dockerformac
 		install_scripts
-		install_golang
 		configure_vim
-	elif [[ $platform == 'Linux' ]]; then
+	elif [[ $PLATFORM == 'Linux' ]]; then
 		export DEBIAN_FRONTEND=noninteractive
 		get_user
 		setup_sources
@@ -45,13 +37,6 @@ get_user() {
     fi
 }
 
-check_is_sudo() {
-    if [ "$EUID" -ne 0 ]; then
-        echo "Please run as root."
-        exit
-    fi
-}
-
 mac_conf() {
 	# the utter bare minimal shit
 	defaults write com.apple.finder AppleShowAllFiles YES; # show hidden files
@@ -64,16 +49,35 @@ mac_conf() {
 	killall Finder 2>/dev/null;
 	echo "Setting Globals completed"
 
-	# install Xcode Command Line Tools
-	# https://github.com/timsutton/osx-vm-templates/blob/ce8df8a7468faa7c5312444ece1b977c1b2f77a4/scripts/xcode-cli-tools.sh
-	sudo touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress;
-	PROD=$(softwareupdate -l |
-		grep "\*.*Command Line" |
-		head -n 1 | awk -F"*" '{print $2}' |
-		sed -e 's/^ *//' |
-		tr -d '\n')
-	softwareupdate -i "$PROD" --verbose;
-	echo "XCode has been installed/Updated."
+	# Check if Xcode is installed
+	if      pkgutil --pkg-info com.apple.pkg.CLTools_Executables >/dev/null 2>&1
+	then    printf '%s\n' "CHECKING INSTALLATION"
+		count=0
+		pkgutil --files com.apple.pkg.CLTools_Executables |
+		while IFS= read file
+		do
+		test -e  "/${file}"         &&
+		printf '%s\n' "/${file}…OK" ||
+		{ printf '%s\n' "/${file}…MISSING"; ((count++)); }
+		done
+		if      (( count > 0 ))
+		then    printf '%s\n' "Command Line Tools are not installed properly"
+			# Provide instructions to remove and the CommandLineTools directory
+			# and the package receipt then install instructions
+		else    printf '%s\n' "Command Line Tools are installed"
+		fi
+	else   printf '%s\n' "Command Line Tools are not installed"
+		# install Xcode Command Line Tools
+		# https://github.com/timsutton/osx-vm-templates/blob/ce8df8a7468faa7c5312444ece1b977c1b2f77a4/scripts/xcode-cli-tools.sh
+		sudo touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress;
+		PROD=$(softwareupdate -l |
+			grep "\*.*Command Line" |
+			head -n 1 | awk -F"*" '{print $2}' |
+			sed -e 's/^ *//' |
+			tr -d '\n')
+		softwareupdate -i "$PROD" --verbose;
+		echo "XCode has been installed/Updated."
+	fi
 }
 
 # install homebrew and packages
@@ -561,13 +565,6 @@ usage() {
 	echo "Usage:"
 	echo "install                   - install the base packages based on OS detection. including docker and custom scripts and neovim configuration"
 	echo "mac_conf                  - configure macbook environment with bare minimum"
-	echo "install_dockerformac      - install docker for macosx"
-	echo "install_docker			- install docker on a debian system"
-	echo "install_wmapps			- install i3 window manager on a debian system"
-	echo "setup sources				- sets up apt repositories on a debian stretch system"
-	echo "install_linux_base_min	- installs the base packages on a debian stretch system"
-	echo "install_scripts           - install custom scripts and binaries from various sources"
-	echo "install_golang            - install golang from source"
 	echo "configure_vim             - configure neovim."
 }
 
@@ -580,46 +577,11 @@ main() {
 	fi
 
 	if [[ $cmd == "install" ]]; then
-		check_is_sudo
 
 		install
 	elif [[ $cmd == "mac_conf" ]]; then
-		check_is_sudo
 
 		mac_conf
-	elif [[ $cmd == "install_dockerformac" ]]; then
-		check_is_sudo
-
-		install_dockerformac
-	elif [[ $cmd == install_linux_base_min ]]; then
-		check_is_sudo
-
-		setup_sources_min
-
-		install_linux_base_min
-	elif [[ $cmd == "install_docker" ]]; then
-		check_is_sudo
-
-		install_docker
-	elif [[ $cmd == "install_wmapps" ]]; then
-		check_is_sudo
-
-		install_wmapps
-	elif [[ $cmd == "setup_sources" ]]; then
-
-		setup_sources
-	elif [[ $cmd == "install_linux_base" ]]; then
-		check_is_sudo
-
-		install_linux_base
-	elif [[ $cmd == "install_scripts" ]]; then
-		check_is_sudo
-
-		install_scripts
-	elif [[ $cmd == "install_golang" ]]; then
-		check_is_sudo
-
-		install_golang
 	elif [[ $cmd == "configure_vim" ]]; then
 
 		configure_vim
