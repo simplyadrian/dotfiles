@@ -9,6 +9,7 @@ doit() {
 	if [[ $PLATFORM == 'Darwin' ]]; then
 		install_mac_base
 		install_dockerformac
+		install_golang
 		install_scripts
 		configure_vim
 	elif [[ $PLATFORM == 'Linux' ]]; then
@@ -128,7 +129,6 @@ install_mac_base() {
 		gnupg \
 		gnupg2 \
 		gnu-indent \
-		go \
 		grep \
 		gzip \
 		highlight \
