@@ -61,11 +61,20 @@ setup_sudo() {
 		echo -e "${TARGET_USER} ALL=NOPASSWD: /sbin/ifconfig, /sbin/ifup, /sbin/ifdown, /sbin/ifquery"; \
 	} >> /etc/sudoers
 
-	# setup downloads folder as tmpfs
-	# that way things are removed on reboot
-	# i like things clean but you may not want this
-	mkdir -p "/home/$TARGET_USER/Downloads"
-	echo -e "\n# tmpfs for downloads\ntmpfs\t/home/${TARGET_USER}/Downloads\ttmpfs\tnodev,nosuid,size=2G\t0\t0" >> /etc/fstab
+	declare file="/etc/fstab"
+	declare regex="\s+\n# tmpfs for downloads\ntmpfs\t/home/${TARGET_USER}/Downloads\ttmpfs\tnodev,nosuid,size=2G\t0\t0\s+"
+
+	declare file_content=$( cat "${file}" )
+	if [[ " $file_content " =~ $regex ]] # please note the space before and after the file content
+		then
+			echo "found"
+		else
+			# setup downloads folder as tmpfs
+			# that way things are removed on reboot
+			# i like things clean but you may not want this
+			mkdir -p "/home/$TARGET_USER/Downloads"
+			echo -e "\n# tmpfs for downloads\ntmpfs\t/home/${TARGET_USER}/Downloads\ttmpfs\tnodev,nosuid,size=2G\t0\t0" >> /etc/fstab
+		fi
 }
 
 install_mac_base_min() {
