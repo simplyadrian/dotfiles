@@ -15,7 +15,7 @@ bin:
 		sudo ln -sf $$file /usr/local/bin/$$f; \
 	done
 
-ifeq ( $(PLATFORM), Darwin )
+ifeq ($(PLATFORM),Darwin)
 
 dotfiles:
 	# add symlinks for dotfiles on a Mac
