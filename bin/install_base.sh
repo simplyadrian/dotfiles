@@ -4,9 +4,8 @@ set -o pipefail
 
 PLATFORM=`uname`
 
-# install.sh
 
-install() {
+doit() {
 	if [[ $PLATFORM == 'Darwin' ]]; then
 		install_mac_base
 		install_dockerformac
@@ -565,8 +564,8 @@ install_wmapps() {
 usage() {
 	echo -e "install_base.sh\n\tThis script installs my basic packages for a Mac laptop\n"
 	echo "Usage:"
-	echo "install                   - install the base packages based on OS detection. including docker and custom scripts and neovim configuration"
-	echo "configure_vim             - configure neovim."
+	echo "doit			- install the base packages based on OS detection. including docker and custom scripts and neovim configuration"
+	echo "configure_vim		- configure neovim."
 }
 
 main() {
@@ -577,9 +576,9 @@ main() {
 		exit 1
 	fi
 
-	if [[ $cmd == "install" ]]; then
+	if [[ $cmd == "doit" ]]; then
 
-		install
+		doit
 	elif [[ $cmd == "configure_vim" ]]; then
 
 		configure_vim
