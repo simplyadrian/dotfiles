@@ -19,7 +19,9 @@ ifeq ($(PLATFORM),Darwin)
 
 dotfiles:
 	# add symlinks for dotfiles on a Mac
-	for file in $(shell find $(CURDIR) -name ".*" -not -name ".gitignore" -not -name ".travis.yml" -not -name ".git" -not -name ".*.swp" -not -name ".x*" -not -name ".i3" -not -name ".urxvt"); do \
+	for file in $(shell find $(CURDIR) -name ".*" -not -name ".gitignore" -not -name ".travis.yml"\
+		-not -name ".git" -not -name ".*.swp" -not -name ".xsessionsrc" -not -name ".Xresources"\
+		-not -name ".Xprofile" -not -name ".Xdefaults" -not -path .fonts -not -path ".i3" -not -path ".urxvt"); do \
 		f=$$(basename $$file); \
 		ln -sfn $$file $(HOME)/$$f; \
 	done; \
@@ -27,7 +29,8 @@ dotfiles:
 
 etc:
 	# add config files on a Mac
-	for file in $(shell find $(CURDIR)/etc -type f -not -name ".*.swp" -not -name "X11" -not -name "apt" -not -name "docker" -not -name "fonts" -not -name "slim.conf" -not -name "systemd" ); do \
+	for file in $(shell find $(CURDIR)/etc -type f -not -name ".*.swp" -not path "X11" -not -path "apt"\
+		-not -path "docker" -not -path "fonts" -not -name "slim.conf" -not -path "systemd" ); do \
 		f=$$(echo $$file | sed -e 's|$(CURDIR)||'); \
 		sudo mkdir -p $$f; \
 		sudo ln -f $$file $$f; \
