@@ -21,18 +21,6 @@ calc() {
 	printf "\n"
 }
 
-# Open XQuartz for x11 display
-quartz() {
-	open -a XQuartz
-}
-
-# Run xhost	and allow connections from local machine
-run_xhost() {
-	display_number=`ps -ef | grep "Xquartz :\d" | grep -v xinit | awk '{ print $9; }'`
-	ip=$(ifconfig en0 | grep inet | awk '$1=="inet" {print $2}')
-	xhost + $ip
-}
-
 # Create a new directory and enter it
 mkd() {
 	mkdir -p "$@"
