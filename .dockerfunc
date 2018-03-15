@@ -402,8 +402,8 @@ sonarr(){
 		-v "${HOME}/Torrents:/downloads" \
 		-v "/mnt/tvshows:/tv" \
 		-v "${HOME}/.sonarr:/config" \
-		-e PUID=0 \
-		-e PGID=0 \
+		-e PUID=1000 \
+		-e PGID=1001 \
 		-p 8989:8989 \
 		--name sonarr \
 		linuxserver/sonarr
