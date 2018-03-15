@@ -394,6 +394,20 @@ s3cmdocker(){
 		--name s3cmd \
 		${DOCKER_REPO_PREFIX}/s3cmd "$@"
 }
+sonarr(){
+	del_stopped sonarr
+
+	docker run -d \
+		-v /etc/localtime:/etc/localtime:ro \
+		-v "${HOME}/Torrents:/downloads" \
+		-v "/mnt/tvshows:/tv" \
+		-v "${HOME}/.sonarr:/config" \
+		-e PUID=0 \
+		-e PGID=0 \
+		-p 8989:8989 \
+		--name sonarr \
+		linuxserver/sonarr
+}
 telnet(){
 	docker run -it --rm \
 		--log-driver none \
@@ -468,6 +482,7 @@ transmission(){
 	docker run -d \
 		-v /etc/localtime:/etc/localtime:ro \
 		-v "${HOME}/Torrents:/transmission/download" \
+		-v "${HOME}/Torrents/incomplete:/transmission/incomplete" \
 		-v "${HOME}/.transmission:/transmission/config" \
 		-p 9091:9091 \
 		-p 51413:51413 \
