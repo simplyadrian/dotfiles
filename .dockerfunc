@@ -481,15 +481,16 @@ transmission(){
 
 	docker run -d \
 		-v /etc/localtime:/etc/localtime:ro \
-		-v "${HOME}/Torrents:/transmission/download" \
-		-v "${HOME}/Torrents/incomplete:/transmission/incomplete" \
-		-v "${HOME}/.transmission:/transmission/config" \
+		-v "${HOME}/Torrents:/downloads" \
+		-v "${HOME}/.transmission/torrents:/watch" \
+		-v "${HOME}/.transmission:/config" \
+		-e PGID=1001 \
+		-e PUID=1000 \
 		-p 9091:9091 \
 		-p 51413:51413 \
 		-p 51413:51413/udp \
 		--name transmission \
-		${DOCKER_REPO_PREFIX}/transmission
-
+		linuxserver/transmission
 
 	sudo hostess add transmission "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' transmission)"
 	#browser-exec "http://transmission:9091"
