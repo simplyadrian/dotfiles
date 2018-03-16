@@ -480,12 +480,11 @@ transmission(){
 	del_stopped transmission
 
 	docker run -d \
-		-v /etc/localtime:/etc/localtime:ro \
 		-v "${HOME}/Torrents:/downloads" \
-		-v "${HOME}/.transmission/torrents:/watch" \
 		-v "${HOME}/.transmission:/config" \
 		-e PGID=1001 \
 		-e PUID=1000 \
+		-e TZ=America/Chicago \
 		-p 9091:9091 \
 		-p 51413:51413 \
 		-p 51413:51413/udp \
