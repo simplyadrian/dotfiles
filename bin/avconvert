@@ -15,11 +15,11 @@
 # Print a usage message and exit.
 display_usage() {
 	echo "This script must be run with arguments."
-	echo -e "\nUsage:\navconvert [directory] [permissions] \n"
+	echo -e "\nUsage:\navconvert [directory] \n"
 }
 
 # if less than two arguments supplied, display usage
-if [  $# -le 1 ]
+if [  $# -le 0 ]
 then
 	display_usage
 	exit 1
@@ -36,7 +36,6 @@ for i in $(find $1 -type f -name '*.avi' -print0 | xargs -0 -n 1);
 do
     avconv -y -i "$i" -vcodec libx264 -acodec aac -strict experimental -threads 3 "${i%.*}.mp4";
 	rm "$i";
-	chown $2 "${i%.*}.mp4";
 	chmod 664 "${i%.*}.mp4";
 done
 
@@ -44,6 +43,5 @@ for i in $(find $1 -type f -name '*.mkv' -print0 | xargs -0 -n 1);
 do
     avconv -y -i "$i" -vcodec libx264 -acodec aac -strict experimental -threads 3 "${i%.*}.mp4";
 	rm "$i";
-	chown $2 "${i%.*}.mp4";
 	chmod 664 "${i%.*}.mp4";
 done
