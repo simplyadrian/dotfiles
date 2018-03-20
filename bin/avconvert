@@ -21,36 +21,8 @@ display_usage() {
 	echo -e "Example:\n ./avconvert /mnt/tvshows/ *.mkv"
 }
 
-# function for conversion of media file to mp4 format
-do_convert() {
-	for i in $(find $1 -type f -name $2 -print0 | xargs -0 -n 1);
-	do
-		avconv -y i "$i" -vcodec libx264 -acodec aac -strict experimental -threads 3 "${i%.*}.mp4";
-		rm "$i"
-		chmod 664 "${i%.*}.mp4";
-	done
-}
-
-# Log handling
-write_log()
-{
-  while read text
-  do
-      LOGTIME=`date "+%Y-%m-%d %H:%M:%S"`
-      # If log file is not defined, just echo the output
-      if [ "$LOG_FILE" == "" ]; then
-    echo $LOGTIME": $text";
-      else
-        LOG=$LOG_FILE.`date +%Y%m%d`
-    touch $LOG
-        if [ ! -f $LOG ]; then echo "ERROR!! Cannot create log file $LOG. Exiting."; exit 1; fi
-    echo $LOGTIME": $text" | tee -a $LOG;
-      fi
-  done
-}
-
 # if less than two arguments supplied, display usage
-if [  $# -le 1 ]
+if [  $# -le 0 ]
 then
 	display_usage
 	exit 1
@@ -63,6 +35,16 @@ then
 	exit 0
 fi
 
-do_convert
+for i in $(find $1 -type f -name '*.avi' -print0 | xargs -0 -n 1);
+do
+    avconv -y -i "$i" -vcodec libx264 -acodec aac -strict experimental -threads 3 "${i%.*}.mp4";
+    rm "$i";
+    chmod 664 "${i%.*}.mp4";
+done
 
-write_log
+for i in $(find $1 -type f -name '*.mkv' -print0 | xargs -0 -n 1);
+do
+    avconv -y -i "$i" -vcodec libx264 -acodec aac -strict experimental -threads 3 "${i%.*}.mp4";
+    rm "$i";
+    chmod 664 "${i%.*}.mp4";
+done
