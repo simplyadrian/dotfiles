@@ -97,6 +97,7 @@ done
 alias chromekill="ps ux | grep '[C]hrome Helper --type=renderer' | grep -v extension-process | tr -s ' ' | cut -d ' ' -f2 | xargs kill"
 
 # Lock the screen (when going AFK)
+alias afkl="i3lock -c 000000"
 alias afk="pmset sleepnow"
 
 # vhosts
