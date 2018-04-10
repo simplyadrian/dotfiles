@@ -432,12 +432,6 @@ golistdeps(){
 	)
 }
 
-# aws-vault role assumption helper functions
-# modify prompt if environment is set
-if [ -n "$ENVIRONMENT" ] ; then
-  export PS1="[\e[${ENVIRONMENT_COLOR}m${ENVIRONMENT}\e[m]$PS1"
-fi
-
 aws_shell () {
   aws-vault exec --session-ttl=4h --assume-role-ttl=60m "$ENVIRONMENT" --server -- bash -l
 }

@@ -149,7 +149,6 @@ install_mac_base() {
 		neovim \
 		ngrep \
 		openvpn \
-		s3cmd \
 		tmux \
 		tree \
 		unzip \
@@ -157,8 +156,8 @@ install_mac_base() {
 		nmap \
 		openssl \
 		python \
-		tor \
-		xclip;
+		travis \
+		tor ;
 	brew tap caskroom/versions ;
 	brew cask install --appdir="Applications" \
 		google-chrome \
@@ -338,7 +337,6 @@ install_linux_base() {
 		libseccomp-dev \
 		network-manager \
 		openvpn \
-		s3cmd \
 		--no-install-recommends
 
 	setup_sudo

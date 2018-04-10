@@ -11,6 +11,12 @@ elif infocmp xterm-256color >/dev/null 2>&1; then
 	export TERM='xterm-256color';
 fi;
 
+# aws-vault role assumption helper functions
+# modify prompt if environment is set
+if [ -n "$ENVIRONMENT" ] ; then
+  export PS1="[\e[${ENVIRONMENT_COLOR}m${ENVIRONMENT}\e[m]$PS1"
+fi
+
 prompt_git() {
 	local s='';
 	local branchName='';
