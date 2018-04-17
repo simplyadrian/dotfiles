@@ -233,11 +233,6 @@ setup_sources() {
 	deb https://apt.dockerproject.org/repo debian-stretch experimental
 	EOF
 
-	# plexmedia
-	cat <<-EOF > /etc/apt/sources.list.d/plexmediaserver.list
-	deb https://downloads.plex.tv/repo/deb/ ./public main
-	EOF
-
 	# Create an environment variable for the correct distribution
 	CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)"
 	export CLOUD_SDK_REPO

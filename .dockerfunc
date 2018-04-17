@@ -183,31 +183,6 @@ dcos(){
 		-w /root/apps \
 		${DOCKER_REPO_PREFIX}/dcos-cli "$@"
 }
-firefox(){
-	del_stopped firefox
-
-	docker run -d \
-		--memory 2gb \
-		--net host \
-		--cpuset-cpus 0 \
-		-v /etc/localtime:/etc/localtime:ro \
-		-v /tmp/.X11-unix:/tmp/.X11-unix \
-		-v "${HOME}/.firefox/cache:/root/.cache/mozilla" \
-		-v "${HOME}/.firefox/mozilla:/root/.mozilla" \
-		-v "${HOME}/Downloads:/root/Downloads" \
-		-v "${HOME}/Pictures:/root/Pictures" \
-		-v "${HOME}/Torrents:/root/Torrents" \
-		-e "DISPLAY=$ip:$display_number" \
-		-e GDK_SCALE \
-		-e GDK_DPI_SCALE \
-		--device /dev/snd \
-		--device /dev/dri \
-		--name firefox \
-		${DOCKER_REPO_PREFIX}/firefox "$@"
-
-	# exit current shell
-	exit 0
-}
 gimp(){
 	del_stopped gimp
 
@@ -353,6 +328,20 @@ nmap(){
 		--net host \
 		${DOCKER_REPO_PREFIX}/nmap "$@"
 }
+
+plex(){
+	docker run \
+	-d \
+	--name plex \
+	--network=host \
+	-e TZ="American/Chicago" \
+	-e PLEX_CLAIM="claim-bnJbCxNLWbMGUVzpiA4P" \
+	-v /var/lib/plexmediaserver:/config \
+	-v /tmp:/transcode \
+	-v /mnt:/data \
+	plexinc/pms-docker
+}
+
 privoxy(){
 	del_stopped privoxy
 	relies_on torproxy
