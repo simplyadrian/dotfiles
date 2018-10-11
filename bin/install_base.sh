@@ -18,7 +18,6 @@ doit() {
 		setup_sources
 		install_linux_base
 		install_docker
-		install_golang
 		install_scripts
 		install_wmapps
 		echo "run installer with configure_vim option without sudo to complete the setup"
@@ -53,10 +52,8 @@ setup_sudo() {
 	gpasswd -a "$TARGET_USER" systemd-journal
 	gpasswd -a "$TARGET_USER" systemd-network
 
-	# add go path to secure path
+	# add ${TARGET_USER} to sudoers
 	{ \
-		echo -e 'Defaults	secure_path="/usr/local/go/bin:/home/aherrera/.go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"'; \
-		echo -e 'Defaults	env_keep += "ftp_proxy http_proxy https_proxy no_proxy GOPATH EDITOR"'; \
 		echo -e "${TARGET_USER} ALL=(ALL) NOPASSWD:ALL"; \
 		echo -e "${TARGET_USER} ALL=NOPASSWD: /sbin/ifconfig, /sbin/ifup, /sbin/ifdown, /sbin/ifquery"; \
 	} >> /etc/sudoers
@@ -233,16 +230,6 @@ setup_sources() {
 	deb https://apt.dockerproject.org/repo debian-stretch experimental
 	EOF
 
-	# Create an environment variable for the correct distribution
-	CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)"
-	export CLOUD_SDK_REPO
-
-	# Add the Cloud SDK distribution URI as a package source
-	echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" > /etc/apt/sources.list.d/google-cloud-sdk.list
-
-	# Import the Google Cloud Platform public key
-	curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-
 	# Add the Google Chrome distribution URI as a package source
 	echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
 
@@ -276,6 +263,7 @@ install_linux_base_min() {
 		gnupg \
 		gnupg2 \
 		gnupg-agent \
+		golang \
 		grep \
 		gzip \
 		hostname \
@@ -326,7 +314,6 @@ install_linux_base() {
 		apparmor \
 		bridge-utils \
 		cgroupfs-mount \
-		google-cloud-sdk \
 		libapparmor-dev \
 		libltdl-dev \
 		libseccomp-dev \
@@ -397,80 +384,6 @@ install_dockerformac() {
 	echo "Docker has been installed."
 }
 
-# install/update golang from source
-install_golang() {
-	export GO_VERSION
-	GO_VERSION=$(curl -sSL "https://golang.org/VERSION?m=text")
-	export GO_SRC=/usr/local/go
-
-	# if we are passing the version
-	if [[ ! -z "$1" ]]; then
-		GO_VERSION=$1
-	fi
-
-	# purge old src
-	if [[ -d "$GO_SRC" ]]; then
-		sudo rm -rf "$GO_SRC"
-		sudo rm -rf "$GOPATH"
-	fi
-
-	GO_VERSION=${GO_VERSION#go}
-
-	# subshell
-	(
-	curl -sSL "https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz" | sudo tar -v -C /usr/local -xz
-	local user="$USER"
-	# rebuild stdlib for faster builds
-	sudo chown -R "${user}" /usr/local/go/pkg
-	CGO_ENABLED=0 go install -a -installsuffix cgo std
-	)
-
-	# get commandline tools
-	(
-	set -x
-	set +e
-	go get github.com/golang/lint/golint
-	go get golang.org/x/tools/cmd/cover
-	go get golang.org/x/review/git-codereview
-	go get golang.org/x/tools/cmd/goimports
-	go get golang.org/x/tools/cmd/gorename
-	go get golang.org/x/tools/cmd/guru
-
-	go get github.com/jessfraz/apk-file
-	go get github.com/jessfraz/audit
-	go get github.com/jessfraz/certok
-	go get github.com/jessfraz/cliaoke
-	go get github.com/jessfraz/ghb0t
-	go get github.com/jessfraz/junk/sembump
-	go get github.com/jessfraz/netns
-	go get github.com/jessfraz/pastebinit
-	go get github.com/jessfraz/pepper
-	go get github.com/jessfraz/reg
-	go get github.com/jessfraz/udict
-	go get github.com/jessfraz/weather
-
-	go get github.com/axw/gocov/gocov
-	go get github.com/crosbymichael/gistit
-	go get github.com/davecheney/httpstat
-	go get github.com/FiloSottile/gvt
-	go get github.com/FiloSottile/vendorcheck
-	go get github.com/google/gops
-	go get github.com/jstemmer/gotags
-	go get github.com/nsf/gocode
-	go get github.com/rogpeppe/godef
-	go get github.com/cbednarski/hostess/cmd/hostess
-
-	# do special things for k8s GOPATH
-	mkdir -p "${GOPATH}/src/k8s.io"
-	kubes_repos=( community kubernetes release test-infra )
-	for krepo in "${kubes_repos[@]}"; do
-		git clone "https://github.com/kubernetes/${krepo}.git" "${GOPATH}/src/k8s.io/${krepo}"
-		cd "${GOPATH}/src/k8s.io/${krepo}"
-		git remote set-url --push origin no_push
-		git remote add jessfraz "https://github.com/jessfraz/${krepo}.git"
-	done
-	)
-}
 
 # install custom scripts/binaries
 install_scripts() {
@@ -497,19 +410,25 @@ configure_vim() {
 
 		if [ -d "${HOME}/.vim" ]; then
 			rm -rf "${HOME}/.vim"
-			git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
+			git clone https://github.com/simplyadrian/.vim.git "${HOME}/.vim"
 			ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
 		else
 			# install .vim files
-			git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
+			git clone https://github.com/simplyadrian/.vim.git "${HOME}/.vim"
 			ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
 		fi
 	elif [[ $PLATFORM == 'Linux' ]]; then
-		git clone --recursive git@github.com:jessfraz/.vim.git "${HOME}/.vim"
-		ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
-		sudo ln -snf "${HOME}/.vim" /root/.vim
-		sudo ln -snf "${HOME}/.vimrc" /root/.vimrc
-
+		if [ -d "${HOME}/.vim" ]; then
+			rm -rf "${HOME}/.vim"
+			git clone https://github.com/simplyadrian/.vim.git "${HOME}/.vim"
+			ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
+			sudo ln -snf "${HOME}/.vim" /root/.vim
+			sudo ln -snf "${HOME}/.vimrc" /root/.vimrc
+		else
+			git clone https://github.com/simplyadrian/.vim.git "${HOME}/.vim"
+			sudo ln -snf "${HOME}/.vim" /root/.vim
+			sudo ln -snf "${HOME}/.vim" /root/.vimrc
+		fi
 		# alias vim dotfiles to neovim
 		mkdir -p "${XDG_CONFIG_HOME:=$HOME/.config}"
 		ln -snf "${HOME}/.vim" "${XDG_CONFIG_HOME}/nvim"
