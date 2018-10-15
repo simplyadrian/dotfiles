@@ -9,7 +9,6 @@ doit() {
 	if [[ $PLATFORM == 'Darwin' ]]; then
 		install_mac_base
 		install_dockerformac
-		install_golang
 		install_scripts
 		configure_vim
 	elif [[ $PLATFORM == 'Linux' ]]; then
@@ -17,9 +16,8 @@ doit() {
 		get_user
 		setup_sources
 		install_linux_base
-		install_docker
 		install_scripts
-		install_wmapps
+		configure_vim
 		echo "run installer with configure_vim option without sudo to complete the setup"
 	fi
 }
