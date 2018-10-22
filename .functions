@@ -433,7 +433,7 @@ golistdeps(){
 }
 
 aws_shell () {
-  aws-vault exec --session-ttl=4h --assume-role-ttl=60m "$ENVIRONMENT" --server -- bash -l
+  aws-vault exec --server --session-ttl=8h "$ENVIRONMENT"
 }
 
 # ssh-agent function to load ssh key

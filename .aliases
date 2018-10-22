@@ -125,4 +125,4 @@ alias prikey="more ~/.ssh/id_ed25519 | pbcopy | echo '=> Private key copied to p
 alias home="ssh aherrera@192.168.86.89"
 
 # aws-vault by environment
-alias prod='export ENVIRONMENT=prod ENVIRONMENT_COLOR="0;31"; aws_shell'
+alias dev='export ENVIRONMENT=dev ENVIRONMENT_COLOR="0;31"; aws_shell'
