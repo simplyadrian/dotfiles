@@ -125,6 +125,7 @@ install_mac_base() {
 		bc \
 		bzip2 \
 		curl \
+		credstash \
 		findutils \
 		fortune \
 		gcc \
@@ -155,10 +156,10 @@ install_mac_base() {
 		tor ;
 	brew tap caskroom/versions ;
 	brew cask install --appdir="Applications" \
+		aws-vault \
 		google-chrome \
-		iterm2 \
 		java \
-		xquartz \
+		iterm2 \
 		slack ;
 	echo "Completed installing base packages via homebrew"
 	)
