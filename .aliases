@@ -124,5 +124,20 @@ alias prikey="more ~/.ssh/id_ed25519 | pbcopy | echo '=> Private key copied to p
 # Home Alias
 alias home="ssh aherrera@192.168.86.89"
 
-# aws-vault by environment
-alias dev='export ENVIRONMENT=dev ENVIRONMENT_COLOR="0;31"; aws_shell'
+# Manage aws-vault
+alias kill-vault='sudo killall aws-vault'
+alias profile-list="profiles | tr '\n' ' '"
+alias close-sessions="for i in $(profile-list); do echo closing sessions for \$i && aws_close \$i; done"
+alias profiles="grep '\[profile' ~/.aws/config | perl -pe 's/\[profile (.*)\]$/\$1/g'"
+alias generate_alias_file="for i in $(profile-list); do generate_alias \$i ; done | sort > ~/.aws.aliases"
+
+generate_alias () {
+  echo "alias meta-$1='aws_meta $1'"
+  echo "alias $1-meta='aws_meta $1'"
+  echo "alias shell-$1='aws_shell $1'"
+  echo "alias $1-shell='aws_shell $1'"
+  echo "alias login-$1='aws_login $1'"
+  echo "alias $1-login='aws_login $1'"
+  echo "alias close-$1='aws_close $1'"
+  echo "alias $1-close='aws_close $1'"
+}

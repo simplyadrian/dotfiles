@@ -3,7 +3,7 @@
 # Load the shell dotfiles, and then some:
 # * ~/.path can be used to extend `$PATH`.
 # * ~/.extra can be used for other settings you don’t want to commit.
-for file in ~/.{bash_prompt,aliases,functions,path,dockerfunc,extra,exports}; do
+for file in ~/.{bash_prompt,aws.aliases,aliases,functions,path,dockerfunc,extra,exports}; do
 	if [[ -r "$file" ]] && [[ -f "$file" ]]; then
 		# shellcheck source=/dev/null
 		source "$file"
@@ -37,3 +37,6 @@ done
 
 # print a fortune when the terminal opens
 fortune -a -s | lolcat
+export PATH="/usr/local/opt/terraform@0.11/bin:$PATH"
+
+test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"
