@@ -34,16 +34,26 @@ then
 	exit 0
 fi
 
-for i in $(find $1 -type f -name '*.mkv' -print0 | xargs -0 -n 1);
-do
-    avconv -y -i "$i" -vcodec libx264 -acodec aac -strict experimental -threads 3 "${i%.*}.mp4";
-    rm "$i";
-    chmod 664 "${i%.*}.mp4";
+find $1 -type f -name '*.mkv' -exec sh -c '
+for file do
+    avconv -y -i "$file" -vcodec libx264 -acodec aac -strict experimental -threads 3 "${file%.*}.mp4"
+	rm "$file"
+    chmod 664 "${file%.*}.mp4"
 done
+' sh {} +
 
-for i in $(find $1 -type f -name '*.avi' -print0 | xargs -0 -n 1);
-do
-    avconv -y -i "$i" -vcodec libx264 -acodec aac -strict experimental -threads 3 "${i%.*}.mp4";
-    rm "$i";
-    chmod 664 "${i%.*}.mp4";
+find $1 -type f -name '*.avi' -exec sh -c '
+for file do
+    avconv -y -i "$file" -vcodec libx264 -acodec aac -strict experimental -threads 3 "${file%.*}.mp4"
+	rm "$file"
+    chmod 664 "${file%.*}.mp4"
 done
+' sh {} +
+
+find $1 -type f -name '*.m4v' -exec sh -c '
+for file do
+    avconv -y -i "$file" -vcodec libx264 -acodec aac -strict experimental -threads 3 "${file%.*}.mp4"
+	rm "$file"
+    chmod 664 "${file%.*}.mp4"
+done
+' sh {} +
