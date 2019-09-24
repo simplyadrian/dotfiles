@@ -433,7 +433,7 @@ golistdeps(){
 }
 
 aws_meta () {
-  aws-vault exec $1 --server --session-ttl=8h -- /bin/bash -l
+  aws-vault exec $1 --server --session-ttl=16h -- /bin/bash -l
 }
 
 aws_shell ()  {
