@@ -141,3 +141,11 @@ generate_alias () {
   echo "alias close-$1='aws_close $1'"
   echo "alias $1-close='aws_close $1'"
 }
+
+alias awslst="aws ec2 describe-instances --output table --query \"Reservations[].Instances[].{Name: Tags[?Key == 'Name'].Value | [0], Id: InstanceId, State: State.Name, LaunchTime: LaunchTime}\""
+
+alias awsls="aws ec2 describe-instances --output table --query \"Reservations[].Instances[].{Name: Tags[?Key == 'Name'].Value | [0], Id: InstanceId, State: State.Name}\""
+
+alias awslsa="aws ec2 describe-instances --output table --query \"Reservations[*].Instances[*].{ Name: Tags[?Key=='Name'] | [0].Value, ImageId: ImageId} [] | sort_by(@, &ImageId)\""
+
+alias awslsami="aws ec2 describe-images --output table --owners self --query \"Images[*].{ImageId: ImageId, Name: Name} [] | sort_by(@, &Name)\""
