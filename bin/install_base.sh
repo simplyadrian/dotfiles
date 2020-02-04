@@ -125,7 +125,6 @@ install_mac_base() {
 		bc \
 		bzip2 \
 		curl \
-		credstash \
 		findutils \
 		fortune \
 		gcc \
@@ -144,21 +143,16 @@ install_mac_base() {
 		make \
 		neovim \
 		ngrep \
-		openvpn \
 		tmux \
 		tree \
 		unzip \
 		cmake	\
 		nmap \
 		openssl \
-		python \
-		travis \
-		tor ;
+		python;
 	brew tap caskroom/versions ;
-	brew cask install --appdir="Applications" \
+	brew cask install --appdir="/Applications" \
 		aws-vault \
-		google-chrome \
-		java \
 		iterm2 \
 		slack ;
 	echo "Completed installing base packages via homebrew"
@@ -171,7 +165,6 @@ setup_sources_min() {
 		apt-transport-https \
 		ca-certificates \
 		curl \
-		dirmngr \
 		lsb-release \
 		gnupg2 \
 		--no-install-recommends
@@ -229,22 +222,27 @@ setup_sources() {
 	deb https://apt.dockerproject.org/repo debian-stretch experimental
 	EOF
 
-	# Add the Google Chrome distribution URI as a package source
-	echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
-
-	# Import the Google Chrome public key
-	curl https://dl.google.com/linux/linux_signing_key.pub | apt-key add -
-
 	# add docker gpg key
 	apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
 
 }
 
-install_linux_base_min() {
+# installs base packages
+install_linux_base() {
+
 	apt-get update
 	apt-get -y upgrade
 
 	apt-get install -y \
+		alsa-utils \
+		apparmor \
+		bridge-utils \
+		cgroupfs-mount \
+		libapparmor-dev \
+		libltdl-dev \
+		libseccomp-dev \
+		network-manager \
+		openvpn \
 		adduser \
 		automake \
 		bash-completion \
@@ -262,7 +260,6 @@ install_linux_base_min() {
 		gnupg \
 		gnupg2 \
 		gnupg-agent \
-		golang \
 		grep \
 		gzip \
 		hostname \
@@ -278,8 +275,6 @@ install_linux_base_min() {
 		net-tools \
 		neovim \
 		pinentry-curses \
-		rxvt-unicode-256color \
-		scdaemon \
 		silversearcher-ag \
 		ssh \
 		strace \
@@ -292,32 +287,6 @@ install_linux_base_min() {
 		xcompmgr \
 		xz-utils \
 		zip \
-		--no-install-recommends
-
-	apt-get autoremove
-	apt-get autoclean
-	apt-get clean
-
-}
-
-# installs base packages
-# the utter bare minimal shit
-install_linux_base() {
-	install_linux_base_min;
-
-	apt-get update
-	apt-get -y upgrade
-
-	apt-get install -y \
-		alsa-utils \
-		apparmor \
-		bridge-utils \
-		cgroupfs-mount \
-		libapparmor-dev \
-		libltdl-dev \
-		libseccomp-dev \
-		network-manager \
-		openvpn \
 		--no-install-recommends
 
 	setup_sudo
@@ -459,26 +428,6 @@ configure_vim() {
 			neovim
 	fi
 	)
-}
-
-# install stuff for i3 window manager
-install_wmapps() {
-	local pkgs=( feh i3 i3lock i3status scrot slim suckless-tools )
-
-	apt install -y "${pkgs[@]}" --no-install-recommends
-
-	# add xorg conf
-	curl -sSL https://raw.githubusercontent.com/simplyadrian/dotfiles/master/etc/X11/xorg.conf > /etc/X11/xorg.conf
-
-	# pretty fonts
-	curl -sSL https://raw.githubusercontent.com/simplyadrian/dotfiles/master/etc/fonts/local.conf > /etc/fonts/local.conf
-
-	echo "Fonts file setup successfully now run:"
-	echo "	dpkg-reconfigure fontconfig-config"
-	echo "with settings: "
-	echo "	Autohinter, Automatic, No."
-	echo "Run: "
-	echo "	dpkg-reconfigure fontconfig"
 }
 
 usage() {

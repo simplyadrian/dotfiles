@@ -146,6 +146,8 @@ alias awslst="aws ec2 describe-instances --output table --query \"Reservations[]
 
 alias awsls="aws ec2 describe-instances --output table --query \"Reservations[].Instances[].{Name: Tags[?Key == 'Name'].Value | [0], Id: InstanceId, State: State.Name}\""
 
+alias awslsip="aws ec2 describe-instances --output table --query \"Reservations[].Instances[].{Name: Tags[?Key == 'Name'].Value | [0], PrivateIpAddress: PrivateIpAddress}\""
+
 alias awslsa="aws ec2 describe-instances --output table --query \"Reservations[*].Instances[*].{ Name: Tags[?Key=='Name'] | [0].Value, ImageId: ImageId} [] | sort_by(@, &ImageId)\""
 
-alias awslsami="aws ec2 describe-images --output table --owners self --query \"Images[*].{ImageId: ImageId, Name: Name} [] | sort_by(@, &Name)\""
+alias awslsami="aws ec2 describe-images --output table --owners self --query \"Images[*].{ImageId: ImageId, Name: Name, CreationDate: CreationDate} [] | sort_by(@, &CreationDate)\""
