@@ -150,7 +150,7 @@ install_mac_base() {
 		nmap \
 		openssl \
 		python;
-	brew tap caskroom/versions ;
+	brew tap homebrew/cask-versions ;
 	brew cask install --appdir="/Applications" \
 		aws-vault \
 		iterm2 \
