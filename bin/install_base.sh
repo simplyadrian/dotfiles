@@ -207,9 +207,6 @@ setup_sources() {
 	deb http://security.debian.org/ stretch/updates main contrib non-free
 	deb-src http://security.debian.org/ stretch/updates main contrib non-free
 
-	deb http://httpredir.debian.org/debian/ jessie-backports main contrib non-free
-	deb-src http://httpredir.debian.org/debian/ jessie-backports main contrib non-free
-
 	deb http://httpredir.debian.org/debian experimental main contrib non-free
 	deb-src http://httpredir.debian.org/debian experimental main contrib non-free
 
