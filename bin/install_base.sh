@@ -10,14 +10,12 @@ doit() {
 		install_mac_base
 		install_dockerformac
 		install_scripts
-		configure_vim
 	elif [[ $PLATFORM == 'Linux' ]]; then
 		export DEBIAN_FRONTEND=noninteractive
 		get_user
 		setup_sources
 		install_linux_base
 		install_scripts
-		configure_vim
 		echo "run installer with configure_vim option without sudo to complete the setup"
 	fi
 }
@@ -124,6 +122,7 @@ install_mac_base() {
 		bash-completion \
 		bc \
 		bzip2 \
+		cmake \
 		curl \
 		findutils \
 		fortune \
@@ -143,13 +142,12 @@ install_mac_base() {
 		make \
 		neovim \
 		ngrep \
-		tmux \
-		tree \
-		unzip \
-		cmake	\
 		nmap \
 		openssl \
-		python;
+		python \
+		tmux \
+		tree \
+		unzip;
 	brew tap homebrew/cask-versions ;
 	brew cask install --appdir="/Applications" \
 		aws-vault \
@@ -159,26 +157,33 @@ install_mac_base() {
 	)
 }
 
-setup_sources_min() {
-	apt-get update
-	apt-get install -y \
-		apt-transport-https \
-		ca-certificates \
-		curl \
-		lsb-release \
-		gnupg2 \
-		--no-install-recommends
+# sets up apt sources
+# assumes you are going to use debian stretch
+setup_sources() {
+	cat <<-EOF > /etc/apt/sources.list
+	deb http://httpredir.debian.org/debian buster main contrib non-free
+	deb-src http://httpredir.debian.org/debian/ buster main contrib non-free
+
+	deb http://httpredir.debian.org/debian/ buster-updates main contrib non-free
+	deb-src http://httpredir.debian.org/debian/ buster-updates main contrib non-free
+
+	deb http://security.debian.org/ buster/updates main contrib non-free
+	deb-src http://security.debian.org/ buster/updates main contrib non-free
+
+	deb http://httpredir.debian.org/debian experimental main contrib non-free
+	deb-src http://httpredir.debian.org/debian experimental main contrib non-free
+	EOF
 
 	# hack for latest git (don't judge)
 	cat <<-EOF > /etc/apt/sources.list.d/git-core.list
-	deb http://ppa.launchpad.net/git-core/ppa/ubuntu xenial main
-	deb-src http://ppa.launchpad.net/git-core/ppa/ubuntu xenial main
+	deb http://ppa.launchpad.net/git-core/ppa/ubuntu bionic main
+	deb-src http://ppa.launchpad.net/git-core/ppa/ubuntu bionic main
 	EOF
 
 	# neovim
 	cat <<-EOF > /etc/apt/sources.list.d/neovim.list
-	deb http://ppa.launchpad.net/neovim-ppa/unstable/ubuntu xenial main
-	deb-src http://ppa.launchpad.net/neovim-ppa/unstable/ubuntu xenial main
+	deb http://ppa.launchpad.net/neovim-ppa/unstable/ubuntu bionic main
+	deb-src http://ppa.launchpad.net/neovim-ppa/unstable/ubuntu bionic main
 	EOF
 
 	# add the git-core ppa gpg key
@@ -190,38 +195,13 @@ setup_sources_min() {
 	# turn off translations, speed up apt-get update
 	mkdir -p /etc/apt/apt.conf.d
 	echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/99translations
-}
 
-# sets up apt sources
-# assumes you are going to use debian stretch
-setup_sources() {
-	setup_sources_min;
+	# add the docker gpg key
+	curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
 
-	cat <<-EOF > /etc/apt/sources.list
-	deb http://httpredir.debian.org/debian stretch main contrib non-free
-	deb-src http://httpredir.debian.org/debian/ stretch main contrib non-free
-
-	deb http://httpredir.debian.org/debian/ stretch-updates main contrib non-free
-	deb-src http://httpredir.debian.org/debian/ stretch-updates main contrib non-free
-
-	deb http://security.debian.org/ stretch/updates main contrib non-free
-	deb-src http://security.debian.org/ stretch/updates main contrib non-free
-
-	deb http://httpredir.debian.org/debian experimental main contrib non-free
-	deb-src http://httpredir.debian.org/debian experimental main contrib non-free
-
-	EOF
-
-	# add docker apt repo
 	cat <<-EOF > /etc/apt/sources.list.d/docker.list
-	deb https://apt.dockerproject.org/repo debian-stretch main
-	deb https://apt.dockerproject.org/repo debian-stretch testing
-	deb https://apt.dockerproject.org/repo debian-stretch experimental
+	deb [arch=amd64] https://download.docker.com/linux/debian buster stable"
 	EOF
-
-	# add docker gpg key
-	apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
-
 }
 
 # installs base packages
@@ -231,23 +211,22 @@ install_linux_base() {
 	apt-get -y upgrade
 
 	apt-get install -y \
+		adduser \
 		alsa-utils \
 		apparmor \
-		bridge-utils \
-		cgroupfs-mount \
-		libapparmor-dev \
-		libltdl-dev \
-		libseccomp-dev \
-		network-manager \
-		openvpn \
-		adduser \
+		apt-transport-https \
 		automake \
 		bash-completion \
 		bc \
+		bridge-utils \
 		bzip2 \
 		ca-certificates \
+		cgroupfs-mount \
+		containerd.io \
 		coreutils \
 		curl \
+		docker-ce \
+		docker-ce-cli \
 		dnsutils \
 		file \
 		findutils \
@@ -264,15 +243,22 @@ install_linux_base() {
 		iptables \
 		jq \
 		less \
+		libapparmor-dev \
+		libltdl-dev \
+		libseccomp-dev \
 		libc6-dev \
 		locales \
+		lsb-release \
 		lsof \
 		make \
 		mount \
 		net-tools \
 		neovim \
+		network-manager \
+		openvpn \
 		pinentry-curses \
 		silversearcher-ag \
+		software-properties-common \
 		ssh \
 		strace \
 		sudo \
@@ -292,48 +278,6 @@ install_linux_base() {
 	apt-get autoclean
 	apt-get clean
 
-}
-
-# installs docker master
-# and adds necessary items to boot params
-install_docker() {
-	# create docker group
-	sudo groupadd docker
-	sudo gpasswd -a "$TARGET_USER" docker
-
-	# Include contributed completions
-	mkdir -p /etc/bash_completion.d
-	curl -sSL -o /etc/bash_completion.d/docker https://raw.githubusercontent.com/docker/docker-ce/master/components/cli/contrib/completion/bash/docker
-
-
-	# get the binary
-	local tmp_tar=/tmp/docker.tgz
-	local binary_uri="https://download.docker.com/linux/static/edge/x86_64"
-	local docker_version
-	docker_version=$(curl -sSL "https://api.github.com/repos/docker/docker-ce/releases/latest" | jq --raw-output .tag_name)
-	docker_version=${docker_version#v}
-	# local docker_sha256
-	# docker_sha256=$(curl -sSL "${binary_uri}/docker-${docker_version}.tgz.sha256" | awk '{print $1}')
-	(
-	set -x
-	curl -fSL "${binary_uri}/docker-${docker_version}.tgz" -o "${tmp_tar}"
-	# echo "${docker_sha256} ${tmp_tar}" | sha256sum -c -
-	tar -C /usr/local/bin --strip-components 1 -xzvf "${tmp_tar}"
-	rm "${tmp_tar}"
-	docker -v
-	)
-	chmod +x /usr/local/bin/docker*
-
-	curl -sSL https://raw.githubusercontent.com/simplyadrian/dotfiles/master/etc/systemd/system/docker.service > /etc/systemd/system/docker.service
-	curl -sSL https://raw.githubusercontent.com/simplyadrian/dotfiles/master/etc/systemd/system/docker.socket > /etc/systemd/system/docker.socket
-
-	systemctl daemon-reload
-	systemctl enable docker
-
-	# update grub with docker configs and power-saving items
-	sed -i.bak 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1 pcie_aspm=force apparmor=1 security=apparmor"/g' /etc/default/grub
-	echo "Docker has been installed. If you want memory management & swap"
-	echo "run update-grub & reboot"
 }
 
 # install docker for macosx
