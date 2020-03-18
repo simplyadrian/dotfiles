@@ -37,6 +37,3 @@ done
 
 # print a fortune when the terminal opens
 fortune -a -s | lolcat
-export PATH="/usr/local/opt/terraform/bin:$PATH"
-
-test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"

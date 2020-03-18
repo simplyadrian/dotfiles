@@ -100,6 +100,3 @@ if [[ -f "${HOME}/.bash_profile" ]]; then
 	# shellcheck source=/dev/null
 	source "${HOME}/.bash_profile"
 fi
-
-# added by travis gem
-[ -f /Users/aherrera/.travis/travis.sh ] && source /Users/aherrera/.travis/travis.sh
