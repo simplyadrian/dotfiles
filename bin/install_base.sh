@@ -200,7 +200,7 @@ setup_sources() {
 	curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
 
 	cat <<-EOF > /etc/apt/sources.list.d/docker.list
-	deb [arch=amd64] https://download.docker.com/linux/debian buster stable"
+	deb [arch=amd64] https://download.docker.com/linux/debian buster stable
 	EOF
 }
 
