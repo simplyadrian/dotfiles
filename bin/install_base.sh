@@ -48,10 +48,6 @@ setup_sudo() {
 	gpasswd -a "$TARGET_USER" systemd-journal
 	gpasswd -a "$TARGET_USER" systemd-network
 
-	# create docker group
-	sudo groupadd docker
-	sudo gpasswd -a "$TARGET_USER" docker
-
 	# add go path to secure path
 	{ \
 		echo -e "Defaults	secure_path=\"/usr/local/go/bin:/home/${TARGET_USER}/.go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/share/bcc/tools:/home/${TARGET_USER}/.cargo/bin\""; \
@@ -222,7 +218,6 @@ install_linux_base() {
   		lsof \
   		make \
   		mount \
-  		neovim \
   		net-tools \
   		policykit-1 \
   		rxvt \
