@@ -258,121 +258,6 @@ install_rust() {
 	rustup component add clippy
 }
 
-# install/update golang from source
-install_golang() {
-	export GO_VERSION
-	GO_VERSION=$(curl -sSL "https://golang.org/VERSION?m=text")
-	export GO_SRC=/usr/local/go
-
-	# if we are passing the version
-	if [[ -n "$1" ]]; then
-		GO_VERSION=$1
-	fi
-
-	# purge old src
-	if [[ -d "$GO_SRC" ]]; then
-		sudo rm -rf "$GO_SRC"
-		sudo rm -rf "$GOPATH"
-	fi
-
-	GO_VERSION=${GO_VERSION#go}
-
-	# subshell
-	(
-	kernel=$(uname -s | tr '[:upper:]' '[:lower:]')
-	curl -sSL "https://storage.googleapis.com/golang/go${GO_VERSION}.${kernel}-amd64.tar.gz" | sudo tar -v -C /usr/local -xz
-	local user="$USER"
-	# rebuild stdlib for faster builds
-	sudo chown -R "${user}" /usr/local/go/pkg
-	CGO_ENABLED=0 go install -a -installsuffix cgo std
-	)
-
-	# get commandline tools
-	(
-	set -x
-	set +e
-	go get golang.org/x/lint/golint
-	go get golang.org/x/tools/cmd/cover
-	go get golang.org/x/tools/gopls
-	go get golang.org/x/review/git-codereview
-	go get golang.org/x/tools/cmd/goimports
-	go get golang.org/x/tools/cmd/gorename
-	go get golang.org/x/tools/cmd/guru
-
-	go get github.com/genuinetools/amicontained
-	go get github.com/genuinetools/apk-file
-	go get github.com/genuinetools/audit
-	go get github.com/genuinetools/bpfd
-	go get github.com/genuinetools/bpfps
-	go get github.com/genuinetools/certok
-	go get github.com/genuinetools/netns
-	go get github.com/genuinetools/pepper
-	go get github.com/genuinetools/reg
-	go get github.com/genuinetools/udict
-	go get github.com/genuinetools/weather
-
-	go get github.com/jessfraz/gmailfilters
-	go get github.com/jessfraz/junk/sembump
-	go get github.com/jessfraz/secping
-	go get github.com/jessfraz/ship
-	go get github.com/jessfraz/tdash
-
-	go get github.com/axw/gocov/gocov
-	go get honnef.co/go/tools/cmd/staticcheck
-
-	# Tools for vimgo.
-	go get github.com/jstemmer/gotags
-	go get github.com/nsf/gocode
-	go get github.com/rogpeppe/godef
-
-	aliases=( genuinetools/contained.af genuinetools/binctr genuinetools/img docker/docker moby/buildkit opencontainers/runc )
-	for project in "${aliases[@]}"; do
-		owner=$(dirname "$project")
-		repo=$(basename "$project")
-		if [[ -d "${HOME}/${repo}" ]]; then
-			rm -rf "${HOME:?}/${repo}"
-		fi
-
-		mkdir -p "${GOPATH}/src/github.com/${owner}"
-
-		if [[ ! -d "${GOPATH}/src/github.com/${project}" ]]; then
-			(
-			# clone the repo
-			cd "${GOPATH}/src/github.com/${owner}"
-			git clone "https://github.com/${project}.git"
-			# fix the remote path, since our gitconfig will make it git@
-			cd "${GOPATH}/src/github.com/${project}"
-			git remote set-url origin "https://github.com/${project}.git"
-			)
-		else
-			echo "found ${project} already in gopath"
-		fi
-
-		# make sure we create the right git remotes
-		if [[ "$owner" != "jessfraz" ]] && [[ "$owner" != "genuinetools" ]]; then
-			(
-			cd "${GOPATH}/src/github.com/${project}"
-			git remote set-url --push origin no_push
-			git remote add jessfraz "https://github.com/jessfraz/${repo}.git"
-			)
-		fi
-	done
-
-	# do special things for k8s GOPATH
-	mkdir -p "${GOPATH}/src/k8s.io"
-	kubes_repos=( community kubernetes release sig-release )
-	for krepo in "${kubes_repos[@]}"; do
-		git clone "https://github.com/kubernetes/${krepo}.git" "${GOPATH}/src/k8s.io/${krepo}"
-		cd "${GOPATH}/src/k8s.io/${krepo}"
-		git remote set-url --push origin no_push
-		git remote add jessfraz "https://github.com/jessfraz/${krepo}.git"
-	done
-	)
-
-	# symlink weather binary for motd
-	sudo ln -snf "${GOPATH}/bin/weather" /usr/local/bin/weather
-}
-
 # install docker for macosx
 install_dockerformac() {
 	curl -o /tmp/Docker.dmg -sSL https://download.docker.com/mac/stable/Docker.dmg
@@ -410,10 +295,6 @@ install_scripts() {
   		curl -sSL "https://misc.j3ss.co/binaries/$script" > "/usr/local/bin/${script}"
   		chmod +x "/usr/local/bin/${script}"
   	done
-
-    echo "Installing golang..."
-    echo
-    install_golang;
 
     echo
     echo "Installing rust..."
