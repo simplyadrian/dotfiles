@@ -48,26 +48,23 @@ setup_sudo() {
 	gpasswd -a "$TARGET_USER" systemd-journal
 	gpasswd -a "$TARGET_USER" systemd-network
 
-	# add ${TARGET_USER} to sudoers
+	# create docker group
+	sudo groupadd docker
+	sudo gpasswd -a "$TARGET_USER" docker
+
+	# add go path to secure path
 	{ \
+		echo -e "Defaults	secure_path=\"/usr/local/go/bin:/home/${TARGET_USER}/.go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/share/bcc/tools:/home/${TARGET_USER}/.cargo/bin\""; \
+		echo -e 'Defaults	env_keep += "ftp_proxy http_proxy https_proxy no_proxy GOPATH EDITOR"'; \
 		echo -e "${TARGET_USER} ALL=(ALL) NOPASSWD:ALL"; \
 		echo -e "${TARGET_USER} ALL=NOPASSWD: /sbin/ifconfig, /sbin/ifup, /sbin/ifdown, /sbin/ifquery"; \
 	} >> /etc/sudoers
 
-	declare file="/etc/fstab"
-	declare regex="\s+\n# tmpfs for downloads\ntmpfs\t/home/${TARGET_USER}/Downloads\ttmpfs\tnodev,nosuid,size=2G\t0\t0\s+"
-
-	declare file_content=$( cat "${file}" )
-	if [[ " $file_content " =~ $regex ]] # please note the space before and after the file content
-		then
-			echo "found"
-		else
-			# setup downloads folder as tmpfs
-			# that way things are removed on reboot
-			# i like things clean but you may not want this
-			mkdir -p "/home/$TARGET_USER/Downloads"
-			echo -e "\n# tmpfs for downloads\ntmpfs\t/home/${TARGET_USER}/Downloads\ttmpfs\tnodev,nosuid,size=2G\t0\t0" >> /etc/fstab
-		fi
+	# setup downloads folder as tmpfs
+	# that way things are removed on reboot
+	# i like things clean but you may not want this
+	mkdir -p "/home/$TARGET_USER/Downloads"
+	echo -e "\\n# tmpfs for downloads\\ntmpfs\\t/home/${TARGET_USER}/Downloads\\ttmpfs\\tnodev,nosuid,size=50G\\t0\\t0" >> /etc/fstab
 }
 
 install_mac_base_min() {
@@ -158,50 +155,30 @@ install_mac_base() {
 }
 
 # sets up apt sources
-# assumes you are going to use debian stretch
 setup_sources() {
 	cat <<-EOF > /etc/apt/sources.list
-	deb http://httpredir.debian.org/debian buster main contrib non-free
-	deb-src http://httpredir.debian.org/debian/ buster main contrib non-free
-
-	deb http://httpredir.debian.org/debian/ buster-updates main contrib non-free
-	deb-src http://httpredir.debian.org/debian/ buster-updates main contrib non-free
-
-	deb http://security.debian.org/ buster/updates main contrib non-free
-	deb-src http://security.debian.org/ buster/updates main contrib non-free
-
-	deb http://httpredir.debian.org/debian experimental main contrib non-free
-	deb-src http://httpredir.debian.org/debian experimental main contrib non-free
+	deb-src http://archive.ubuntu.com/ubuntu focal main restricted
+  deb http://us.archive.ubuntu.com/ubuntu/ focal main restricted
+  deb-src http://us.archive.ubuntu.com/ubuntu/ focal universe main restricted multiverse
+  deb http://us.archive.ubuntu.com/ubuntu/ focal-updates main restricted
+  deb-src http://us.archive.ubuntu.com/ubuntu/ focal-updates universe main restricted multiverse
+  deb http://us.archive.ubuntu.com/ubuntu/ focal universe
+  deb http://us.archive.ubuntu.com/ubuntu/ focal-updates universe
+  deb http://us.archive.ubuntu.com/ubuntu/ focal multiverse
+  deb http://us.archive.ubuntu.com/ubuntu/ focal-updates multiverse
+  deb http://us.archive.ubuntu.com/ubuntu/ focal-backports main restricted universe multiverse
+  deb-src http://us.archive.ubuntu.com/ubuntu/ focal-backports main restricted universe multiverse
+  deb http://archive.canonical.com/ubuntu focal partner
+  deb-src http://archive.canonical.com/ubuntu focal partner
+  deb http://security.ubuntu.com/ubuntu focal-security main restricted
+  deb-src http://security.ubuntu.com/ubuntu focal-security universe main restricted multiverse
+  deb http://security.ubuntu.com/ubuntu focal-security universe
+  deb http://security.ubuntu.com/ubuntu focal-security multiverse
 	EOF
-
-	# hack for latest git (don't judge)
-	cat <<-EOF > /etc/apt/sources.list.d/git-core.list
-	deb http://ppa.launchpad.net/git-core/ppa/ubuntu bionic main
-	deb-src http://ppa.launchpad.net/git-core/ppa/ubuntu bionic main
-	EOF
-
-	# neovim
-	cat <<-EOF > /etc/apt/sources.list.d/neovim.list
-	deb http://ppa.launchpad.net/neovim-ppa/unstable/ubuntu bionic main
-	deb-src http://ppa.launchpad.net/neovim-ppa/unstable/ubuntu bionic main
-	EOF
-
-	# add the git-core ppa gpg key
-	apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys E1DD270288B4E6030699E45FA1715D88E1DF1F24
-
-	# add the neovim ppa gpg key
-	apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 9DBB0BE9366964F134855E2255F96FCF8231B6DD
 
 	# turn off translations, speed up apt-get update
 	mkdir -p /etc/apt/apt.conf.d
 	echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/99translations
-
-	# add the docker gpg key
-	curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
-
-	cat <<-EOF > /etc/apt/sources.list.d/docker.list
-	deb [arch=amd64] https://download.docker.com/linux/debian buster stable
-	EOF
 }
 
 # installs base packages
@@ -211,66 +188,57 @@ install_linux_base() {
 	apt-get -y upgrade
 
 	apt-get install -y \
-		adduser \
-		alsa-utils \
-		apparmor \
-		apt-transport-https \
-		automake \
-		bash-completion \
-		bc \
-		bridge-utils \
-		bzip2 \
-		ca-certificates \
-		cgroupfs-mount \
-		containerd.io \
-		coreutils \
-		curl \
-		docker-ce \
-		docker-ce-cli \
-		dnsutils \
-		file \
-		findutils \
-		fortune \
-		gcc \
-		git \
-		gnupg \
-		gnupg2 \
-		gnupg-agent \
-		grep \
-		gzip \
-		hostname \
-		indent \
-		iptables \
-		jq \
-		less \
-		libapparmor-dev \
-		libltdl-dev \
-		libseccomp-dev \
-		libc6-dev \
-		locales \
-		lsb-release \
-		lsof \
-		make \
-		mount \
-		net-tools \
-		neovim \
-		network-manager \
-		openvpn \
-		pinentry-curses \
-		silversearcher-ag \
-		software-properties-common \
-		ssh \
-		strace \
-		sudo \
-		tar \
-		tree \
-		tzdata \
-		unzip \
-		xclip \
-		xcompmgr \
-		xz-utils \
-		zip \
-		--no-install-recommends
+	    adduser \
+	    apt-transport-https \
+  		automake \
+  		bash-completion \
+  		bc \
+  		bzip2 \
+  		ca-certificates \
+  		ca-certificates \
+  		coreutils \
+  		curl \
+  		curl \
+  		dirmngr \
+  		dnsutils \
+  		docker.io \
+  		file \
+  		findutils \
+  		gcc \
+  		git \
+  		gnupg \
+  		gnupg2 \
+  		gnupg2 \
+  		grep \
+  		gzip \
+  		hostname \
+  		indent \
+  		iptables \
+  		jq \
+  		less \
+  		libc6-dev \
+  		locales \
+  		lsb-release \
+  		lsof \
+  		make \
+  		mount \
+  		neovim \
+  		net-tools \
+  		policykit-1 \
+  		rxvt \
+  		silversearcher-ag \
+  		ssh \
+  		strace \
+  		sudo \
+  		tar \
+  		tree \
+  		tzdata \
+  		unzip \
+  		vim \
+  		xclip \
+  		xz-utils \
+  		zip \
+  		--no-install-recommends
 
 	setup_sudo
 
@@ -278,6 +246,136 @@ install_linux_base() {
 	apt-get autoclean
 	apt-get clean
 
+}
+
+# install rust
+
+install_rust() {
+	curl https://sh.rustup.rs -sSf | sh
+
+	# Install rust-src for rust analyzer
+	rustup component add rust-src
+	# Install rust-analyzer
+	curl -sSL "https://github.com/rust-analyzer/rust-analyzer/releases/download/2020-04-20/rust-analyzer-linux" -o "${HOME}/.cargo/bin/rust-analyzer"
+	chmod +x "${HOME}/.cargo/bin/rust-analyzer"
+
+	# Install clippy
+	rustup component add clippy
+}
+
+# install/update golang from source
+install_golang() {
+	export GO_VERSION
+	GO_VERSION=$(curl -sSL "https://golang.org/VERSION?m=text")
+	export GO_SRC=/usr/local/go
+
+	# if we are passing the version
+	if [[ -n "$1" ]]; then
+		GO_VERSION=$1
+	fi
+
+	# purge old src
+	if [[ -d "$GO_SRC" ]]; then
+		sudo rm -rf "$GO_SRC"
+		sudo rm -rf "$GOPATH"
+	fi
+
+	GO_VERSION=${GO_VERSION#go}
+
+	# subshell
+	(
+	kernel=$(uname -s | tr '[:upper:]' '[:lower:]')
+	curl -sSL "https://storage.googleapis.com/golang/go${GO_VERSION}.${kernel}-amd64.tar.gz" | sudo tar -v -C /usr/local -xz
+	local user="$USER"
+	# rebuild stdlib for faster builds
+	sudo chown -R "${user}" /usr/local/go/pkg
+	CGO_ENABLED=0 go install -a -installsuffix cgo std
+	)
+
+	# get commandline tools
+	(
+	set -x
+	set +e
+	go get golang.org/x/lint/golint
+	go get golang.org/x/tools/cmd/cover
+	go get golang.org/x/tools/gopls
+	go get golang.org/x/review/git-codereview
+	go get golang.org/x/tools/cmd/goimports
+	go get golang.org/x/tools/cmd/gorename
+	go get golang.org/x/tools/cmd/guru
+
+	go get github.com/genuinetools/amicontained
+	go get github.com/genuinetools/apk-file
+	go get github.com/genuinetools/audit
+	go get github.com/genuinetools/bpfd
+	go get github.com/genuinetools/bpfps
+	go get github.com/genuinetools/certok
+	go get github.com/genuinetools/netns
+	go get github.com/genuinetools/pepper
+	go get github.com/genuinetools/reg
+	go get github.com/genuinetools/udict
+	go get github.com/genuinetools/weather
+
+	go get github.com/jessfraz/gmailfilters
+	go get github.com/jessfraz/junk/sembump
+	go get github.com/jessfraz/secping
+	go get github.com/jessfraz/ship
+	go get github.com/jessfraz/tdash
+
+	go get github.com/axw/gocov/gocov
+	go get honnef.co/go/tools/cmd/staticcheck
+
+	# Tools for vimgo.
+	go get github.com/jstemmer/gotags
+	go get github.com/nsf/gocode
+	go get github.com/rogpeppe/godef
+
+	aliases=( genuinetools/contained.af genuinetools/binctr genuinetools/img docker/docker moby/buildkit opencontainers/runc )
+	for project in "${aliases[@]}"; do
+		owner=$(dirname "$project")
+		repo=$(basename "$project")
+		if [[ -d "${HOME}/${repo}" ]]; then
+			rm -rf "${HOME:?}/${repo}"
+		fi
+
+		mkdir -p "${GOPATH}/src/github.com/${owner}"
+
+		if [[ ! -d "${GOPATH}/src/github.com/${project}" ]]; then
+			(
+			# clone the repo
+			cd "${GOPATH}/src/github.com/${owner}"
+			git clone "https://github.com/${project}.git"
+			# fix the remote path, since our gitconfig will make it git@
+			cd "${GOPATH}/src/github.com/${project}"
+			git remote set-url origin "https://github.com/${project}.git"
+			)
+		else
+			echo "found ${project} already in gopath"
+		fi
+
+		# make sure we create the right git remotes
+		if [[ "$owner" != "jessfraz" ]] && [[ "$owner" != "genuinetools" ]]; then
+			(
+			cd "${GOPATH}/src/github.com/${project}"
+			git remote set-url --push origin no_push
+			git remote add jessfraz "https://github.com/jessfraz/${repo}.git"
+			)
+		fi
+	done
+
+	# do special things for k8s GOPATH
+	mkdir -p "${GOPATH}/src/k8s.io"
+	kubes_repos=( community kubernetes release sig-release )
+	for krepo in "${kubes_repos[@]}"; do
+		git clone "https://github.com/kubernetes/${krepo}.git" "${GOPATH}/src/k8s.io/${krepo}"
+		cd "${GOPATH}/src/k8s.io/${krepo}"
+		git remote set-url --push origin no_push
+		git remote add jessfraz "https://github.com/jessfraz/${krepo}.git"
+	done
+	)
+
+	# symlink weather binary for motd
+	sudo ln -snf "${GOPATH}/bin/weather" /usr/local/bin/weather
 }
 
 # install docker for macosx
@@ -296,78 +394,79 @@ install_dockerformac() {
 
 # install custom scripts/binaries
 install_scripts() {
-	# install speedtest
-	curl -sSL https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py  > /tmp/speedtest
-	sudo cp /tmp/speedtest /usr/local/bin/speedtest
-	sudo chmod +x /usr/local/bin/speedtest
-	echo "The Speedtest binary has been installed"
+		# install speedtest
+  	curl -sSL https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py  > /usr/local/bin/speedtest
+  	chmod +x /usr/local/bin/speedtest
 
-	# install lolcat
-	curl -sSL https://raw.githubusercontent.com/tehmaze/lolcat/master/lolcat > /tmp/lolcat
-	sudo cp /tmp/lolcat /usr/local/bin/lolcat
-	sudo chmod +x /usr/local/bin/lolcat
-	echo "The lolcat binary has been installed"
-}
+  	# install icdiff
+  	curl -sSL https://raw.githubusercontent.com/jeffkaufman/icdiff/master/icdiff > /usr/local/bin/icdiff
+  	curl -sSL https://raw.githubusercontent.com/jeffkaufman/icdiff/master/git-icdiff > /usr/local/bin/git-icdiff
+  	chmod +x /usr/local/bin/icdiff
+  	chmod +x /usr/local/bin/git-icdiff
 
-# configure neovim with jessfraz's repo
-configure_vim() {
+  	# install lolcat
+  	curl -sSL https://raw.githubusercontent.com/tehmaze/lolcat/master/lolcat > /usr/local/bin/lolcat
+  	chmod +x /usr/local/bin/lolcat
+
+
+  	local scripts=( have light )
+
+  	for script in "${scripts[@]}"; do
+  		curl -sSL "https://misc.j3ss.co/binaries/$script" > "/usr/local/bin/${script}"
+  		chmod +x "/usr/local/bin/${script}"
+  	done
+
+    echo "Installing golang..."
+    echo
+    install_golang;
+
+    echo
+    echo "Installing rust..."
+    echo
+    install_rust;
+  }
+
+install_vim() {
+	# Install node, needed for coc.vim
+	curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | sudo apt-key add -
+
+	# FROM: https://github.com/nodesource/distributions/blob/master/README.md
+	# Replace with the branch of Node.js or io.js you want to install: node_6.x,
+	# node_8.x, etc...
+	VERSION=node_14.x
+	# The below command will set this correctly, but if lsb_release isn't available, you can set it manually:
+	# - For Debian distributions: jessie, sid, etc...
+	# - For Ubuntu distributions: xenial, bionic, etc...
+	# - For Debian or Ubuntu derived distributions your best option is to use
+	# the codename corresponding to the upstream release your distribution is
+	# based off. This is an advanced scenario and unsupported if your
+	# distribution is not listed as supported per earlier in this README.
+	DISTRO="$(lsb_release -s -c)"
+	echo "deb https://deb.nodesource.com/$VERSION $DISTRO main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+	echo "deb-src https://deb.nodesource.com/$VERSION $DISTRO main" | sudo tee -a /etc/apt/sources.list.d/nodesource.list
+
+	sudo apt update || true
+	sudo apt install -y \
+		nodejs \
+		--no-install-recommends
+
 	# create subshell
 	(
 	cd "$HOME"
 
-	if [[ $PLATFORM == 'Darwin' ]]; then
+	# install .vim files
+	sudo rm -rf "${HOME}/.vim"
+	git clone --recursive git@github.com:jessfraz/.vim.git "${HOME}/.vim"
+	(
+	cd "${HOME}/.vim"
+	make install
+	)
 
-		if [ -d "${HOME}/.vim" ]; then
-			rm -rf "${HOME}/.vim"
-			git clone https://github.com/simplyadrian/.vim.git "${HOME}/.vim"
-			ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
-		else
-			# install .vim files
-			git clone https://github.com/simplyadrian/.vim.git "${HOME}/.vim"
-			ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
-		fi
-	elif [[ $PLATFORM == 'Linux' ]]; then
-		if [ -d "${HOME}/.vim" ]; then
-			rm -rf "${HOME}/.vim"
-			git clone https://github.com/simplyadrian/.vim.git "${HOME}/.vim"
-			ln -snf "${HOME}/.vim/vimrc" "${HOME}/.vimrc"
-			sudo ln -snf "${HOME}/.vim" /root/.vim
-			sudo ln -snf "${HOME}/.vimrc" /root/.vimrc
-		else
-			git clone https://github.com/simplyadrian/.vim.git "${HOME}/.vim"
-			sudo ln -snf "${HOME}/.vim" /root/.vim
-			sudo ln -snf "${HOME}/.vim" /root/.vimrc
-		fi
-		# alias vim dotfiles to neovim
-		mkdir -p "${XDG_CONFIG_HOME:=$HOME/.config}"
-		ln -snf "${HOME}/.vim" "${XDG_CONFIG_HOME}/nvim"
-		ln -snf "${HOME}/.vimrc" "${XDG_CONFIG_HOME}/nvim/init.vim"
-		# do the same for root
-		sudo mkdir -p /root/.config
-		sudo ln -snf "${HOME}/.vim" /root/.config/nvim
-		sudo ln -snf "${HOME}/.vimrc" /root/.config/nvim/init.vim
-
-		#update alternatives to neovim
-		sudo update-alternatives --install /usr/bin/vi vi "$(which nvim)" 60
-		sudo update-alternatives --config vi
-		sudo update-alternatives --install /usr/bin/vim vim "$(which nvim)" 60
-		sudo update-alternatives --config vim
-		sudo update-alternatives --install /usr/bin/editor editor "$(which nvim)" 60
-		sudo update-alternatives --config editor
-
-		# install things needed for deoplete for vim
-		sudo apt update
-
-		sudo apt install -y \
-			python3-pip \
-			python3-setuptools \
-			--no-install-recommends
-
-		pip3 install -U \
-			setuptools \
-			wheel \
-			neovim
-	fi
+	# update alternatives to vim
+	sudo update-alternatives --install /usr/bin/vi vi "$(command -v vim)" 60
+	sudo update-alternatives --config vi
+	sudo update-alternatives --install /usr/bin/editor editor "$(command -v vim)" 60
+	sudo update-alternatives --config editor
 	)
 }
 
@@ -375,7 +474,7 @@ usage() {
 	echo -e "install_base.sh\n\tThis script installs my basic packages for a Mac laptop\n"
 	echo "Usage:"
 	echo "doit			- install the base packages based on OS detection. including docker and custom scripts and neovim configuration"
-	echo "configure_vim		- configure neovim."
+	echo "install_vim		- install vim."
 }
 
 main() {
@@ -389,9 +488,9 @@ main() {
 	if [[ $cmd == "doit" ]]; then
 
 		doit
-	elif [[ $cmd == "configure_vim" ]]; then
+	elif [[ $cmd == "install_vim" ]]; then
 
-		configure_vim
+		install_vim
     else
 		usage
 	fi

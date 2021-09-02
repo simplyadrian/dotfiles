@@ -417,22 +417,6 @@ golistdeps(){
 	)
 }
 
-aws_meta () {
-  aws-vault exec $1 --server --session-ttl=16h -- /bin/bash -l
-}
-
-aws_shell ()  {
-  aws-vault exec $1 -- /bin/bash -l
-}
-
-aws_login () {
-  aws-vault login $1 --assume-role-ttl=1h
-}
-
-aws_close () {
-  aws-vault rm -s $1
-}
-
 # ssh-agent function to load ssh key
 SSH_ENV="$HOME/.ssh/environment"
 

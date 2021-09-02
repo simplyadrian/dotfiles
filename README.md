@@ -10,8 +10,7 @@ This will create symlinks from this repo to your home folder.
 
 **To customize:**
 
-Save env vars, etc in a `.extra` file, that looks something like
-this:
+Save env vars, etc in a `.extra` file, that looks something like this:
 
 ```bash
 ###
@@ -37,8 +36,8 @@ export GMAIL_FROM=from-email@you.com
 
 ### Tests
 
-The tests use [shellcheck](https://github.com/koalaman/shellcheck). You don't
-need to install anything. They run in a container.
+The tests use [shellcheck](https://github.com/koalaman/shellcheck). You don't need to install anything. They run in a
+container.
 
 ```console
 $ make test

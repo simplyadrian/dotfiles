@@ -1,20 +1,15 @@
 *~
-
 # KDE directory preferences
 .directory
-
 # Linux trash folder which might appear on any partition or disk
 .Trash-*
-
 .DS_Store
 [._]*.s[a-w][a-z]
 [._]s[a-w][a-z]
 *.un~
 Session.vim
 .netrwhist
-*~
-
 .extra
 .nginx/conf.d/*
 .aws/credentials
-.i3/logfile
+/.idea/
