@@ -216,7 +216,8 @@ install_linux_base() {
   		curl \
   		dirmngr \
   		dnsutils \
-  		docker.io \
+  		docker-ce \
+      docker-ce-cli \
   		file \
   		findutils \
   		gcc \
