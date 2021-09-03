@@ -45,8 +45,13 @@ doit() {
 	elif [[ $PLATFORM == 'Linux' ]]; then
 		export DEBIAN_FRONTEND=noninteractive
 		get_user
+
+		check_is_sudo
 		setup_sources
+
+		check_is_sudo
 		install_linux_base
+
 		install_scripts
 		install_vim
 		echo "run installer with configure_vim option without sudo to complete the setup"
@@ -68,8 +73,9 @@ setup_sudo() {
 	# then you wont need sudo to view logs and shit
   gpasswd -a "$TARGET_USER" systemd-journal
   gpasswd -a "$TARGET_USER" systemd-network
-  sudo groupadd docker
+  sudo addgroup --system docker
   sudo gpasswd -a "$TARGET_USER" docker
+  newgrp docker
 
 	# add go path to secure path
 	{ \
@@ -225,7 +231,6 @@ install_linux_base() {
   		curl \
   		dirmngr \
   		dnsutils \
-  		docker-ce \
   		file \
   		findutils \
   		gcc \
@@ -269,6 +274,7 @@ install_linux_base() {
 	apt-get autoclean
 	apt-get clean
 
+	sudo snap install docker
 	sudo systemctl status docker
 
 }
