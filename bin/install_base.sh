@@ -48,6 +48,7 @@ doit() {
 		setup_sources
 		install_linux_base
 		install_scripts
+		install_vim
 		echo "run installer with configure_vim option without sudo to complete the setup"
 	fi
 }
@@ -225,7 +226,6 @@ install_linux_base() {
   		dirmngr \
   		dnsutils \
   		docker-ce \
-      docker-ce-cli \
   		file \
   		findutils \
   		gcc \
@@ -249,7 +249,6 @@ install_linux_base() {
   		policykit-1 \
   		rxvt \
   		silversearcher-ag \
-      software-properties-common \
   		ssh \
   		strace \
   		sudo \
@@ -261,6 +260,7 @@ install_linux_base() {
   		xclip \
   		xz-utils \
   		zip \
+      software-properties-common \
   		--no-install-recommends
 
 	setup_sudo
