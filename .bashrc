@@ -133,15 +133,3 @@ done
 	-W "$(grep "^Host" ~/.ssh/config | \
 	grep -v "[?*]" | cut -d " " -f2 | \
 	tr ' ' '\n')" scp sftp ssh
-
-# source kubectl bash completion
-if hash kubectl 2>/dev/null; then
-	# shellcheck source=/dev/null
-	source <(kubectl completion bash)
-fi
-
-# source travis bash completion
-if [[ -f "${HOME}/.travis/travis.sh" ]]; then
-	# shellcheck source=/dev/null
-	source "${HOME}/.travis/travis.sh"
-fi

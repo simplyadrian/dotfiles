@@ -26,16 +26,6 @@ dotfiles:
 		ln -sfn $$file $(HOME)/$$f; \
 	done; \
 	ln -fn $(CURDIR)/gitignore $(HOME)/.gitignore;
-
-etc:
-	# add config files on a Mac
-	for file in $(shell find $(CURDIR)/etc -type f -not -name ".*.swp" -not path "X11" -not -path "apt"\
-		-not -path "docker" -not -path "fonts" -not -name "slim.conf" -not -path "systemd" ); do \
-		f=$$(echo $$file | sed -e 's|$(CURDIR)||'); \
-		sudo mkdir -p $$f; \
-		sudo ln -f $$file $$f; \
-	done
-
 else
 
 dotfiles:
@@ -45,15 +35,6 @@ dotfiles:
 		ln -sfn $$file $(HOME)/$$f; \
 	done; \
 	ln -fn $(CURDIR)/gitignore $(HOME)/.gitignore;
-
-etc:
-	# add config files on a Debian System
-	for file in $(shell find $(CURDIR)/etc -type f -not -name ".*.swp"); do \
-		f=$$(echo $$file | sed -e 's|$(CURDIR)||'); \
-		sudo mkdir -p $$f; \
-		sudo ln -f $$file $$f; \
-	done
-
 endif
 
 test: shellcheck

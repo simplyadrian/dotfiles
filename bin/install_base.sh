@@ -330,9 +330,9 @@ install_vim() {
 
     # install .vim files
     sudo rm -rf "${HOME}/.vim"
-    git clone --recursive git@github.com:simplyadrian/.vim.git "${TARGET_USER}/.vim"
+    git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
     (
-      cd "${TARGET_USER}/.vim"
+      cd "${HOME}/.vim"
       make install
     )
 
