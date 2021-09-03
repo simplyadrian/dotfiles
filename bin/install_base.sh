@@ -45,13 +45,8 @@ doit() {
 	elif [[ $PLATFORM == 'Linux' ]]; then
 		export DEBIAN_FRONTEND=noninteractive
 		get_user
-
-		check_is_sudo
 		setup_sources
-
-		check_is_sudo
 		install_linux_base
-
 		install_scripts
 		install_vim
 		echo "run installer with configure_vim option without sudo to complete the setup"
