@@ -2,7 +2,39 @@
 set -e
 set -o pipefail
 
+# install.sh
+#	This script installs my basic setup for a debian laptop
+
 PLATFORM=`uname`
+export DEBIAN_FRONTEND=noninteractive
+
+# Choose a user account to use for this installation
+get_user() {
+	if [[ -z "${TARGET_USER-}" ]]; then
+		mapfile -t options < <(find /home/* -maxdepth 0 -printf "%f\\n" -type d)
+		# if there is only one option just use that user
+		if [ "${#options[@]}" -eq "1" ]; then
+			readonly TARGET_USER="${options[0]}"
+			echo "Using user account: ${TARGET_USER}"
+			return
+		fi
+
+		# iterate through the user options and print them
+		PS3='command -v user account should be used? '
+
+		select opt in "${options[@]}"; do
+			readonly TARGET_USER=$opt
+			break
+		done
+	fi
+}
+
+check_is_sudo() {
+	if [ "$EUID" -ne 0 ]; then
+		echo "Please run as root."
+		exit
+	fi
+}
 
 
 doit() {
@@ -18,18 +50,6 @@ doit() {
 		install_scripts
 		echo "run installer with configure_vim option without sudo to complete the setup"
 	fi
-}
-
-# Choose a user account to use for this installation
-get_user() {
-    if [ -z "${TARGET_USER-}" ]; then
-        PS3='Which user account should be used? '
-        mapfile -t options < <(find /home/* -maxdepth 0 -printf "%f\\n" -type d)
-        select opt in "${options[@]}"; do
-            readonly TARGET_USER=$opt
-            break
-        done
-    fi
 }
 
 # setup sudo for a user
@@ -143,7 +163,6 @@ install_mac_base() {
 		unzip;
 	brew tap homebrew/cask-versions ;
 	brew cask install --appdir="/Applications" \
-		aws-vault \
 		iterm2 \
 		slack ;
 	echo "Completed installing base packages via homebrew"
@@ -243,21 +262,6 @@ install_linux_base() {
 
 }
 
-# install rust
-
-install_rust() {
-	curl https://sh.rustup.rs -sSf | sh
-
-	# Install rust-src for rust analyzer
-	rustup component add rust-src
-	# Install rust-analyzer
-	curl -sSL "https://github.com/rust-analyzer/rust-analyzer/releases/download/2020-04-20/rust-analyzer-linux" -o "${HOME}/.cargo/bin/rust-analyzer"
-	chmod +x "${HOME}/.cargo/bin/rust-analyzer"
-
-	# Install clippy
-	rustup component add clippy
-}
-
 # install docker for macosx
 install_dockerformac() {
 	curl -o /tmp/Docker.dmg -sSL https://download.docker.com/mac/stable/Docker.dmg
@@ -295,11 +299,6 @@ install_scripts() {
   		curl -sSL "https://misc.j3ss.co/binaries/$script" > "/usr/local/bin/${script}"
   		chmod +x "/usr/local/bin/${script}"
   	done
-
-    echo
-    echo "Installing rust..."
-    echo
-    install_rust;
   }
 
 install_vim() {
