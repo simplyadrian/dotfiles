@@ -65,8 +65,10 @@ setup_sudo() {
 
 	# add user to systemd groups
 	# then you wont need sudo to view logs and shit
-	gpasswd -a "$TARGET_USER" systemd-journal
-	gpasswd -a "$TARGET_USER" systemd-network
+  gpasswd -a "$TARGET_USER" systemd-journal
+  gpasswd -a "$TARGET_USER" systemd-network
+  sudo groupadd docker
+  sudo gpasswd -a "$TARGET_USER" docker
 
 	# add go path to secure path
 	{ \
@@ -191,6 +193,14 @@ setup_sources() {
   deb http://security.ubuntu.com/ubuntu focal-security multiverse
 	EOF
 
+	# add docker gpg key
+	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+
+	# add docker repository
+	sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
+
+  apt-cache policy docker-ce
+
 	# turn off translations, speed up apt-get update
 	mkdir -p /etc/apt/apt.conf.d
 	echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/99translations
@@ -210,9 +220,7 @@ install_linux_base() {
   		bc \
   		bzip2 \
   		ca-certificates \
-  		ca-certificates \
   		coreutils \
-  		curl \
   		curl \
   		dirmngr \
   		dnsutils \
@@ -223,7 +231,6 @@ install_linux_base() {
   		gcc \
   		git \
   		gnupg \
-  		gnupg2 \
   		gnupg2 \
   		grep \
   		gzip \
@@ -242,6 +249,7 @@ install_linux_base() {
   		policykit-1 \
   		rxvt \
   		silversearcher-ag \
+      software-properties-common \
   		ssh \
   		strace \
   		sudo \
@@ -260,6 +268,8 @@ install_linux_base() {
 	apt-get autoremove
 	apt-get autoclean
 	apt-get clean
+
+	sudo systemctl status docker
 
 }
 
