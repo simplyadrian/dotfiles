@@ -87,7 +87,7 @@ plex(){
 	--network=host \
 	-e TZ="American/Chicago" \
 	-e PLEX_CLAIM="claim-bnJbCxNLWbMGUVzpiA4P" \
-	-v /var/lib/plexmediaserver:/config \
+	-v /mnt/plexmediaserver:/config \
 	-v /tmp:/transcode \
 	-v /mnt:/data \
 	plexinc/pms-docker
