@@ -13,3 +13,4 @@ Session.vim
 .nginx/conf.d/*
 .aws/credentials
 /.idea/
+.aws/sso
