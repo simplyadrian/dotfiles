@@ -40,7 +40,6 @@ doit() {
     setup_sources
     install_linux_base
     install_scripts
-    install_vim
     echo "run installer with configure_vim option without sudo to complete the setup"
   fi
 }
@@ -139,9 +138,9 @@ install_mac_base() {
       gcc \
       git \
       git-open \
+      gnu-indent \
       gnupg \
       gnupg2 \
-      gnu-indent \
       grep \
       gzip \
       highlight \
@@ -150,14 +149,14 @@ install_mac_base() {
       less \
       lsof \
       make \
-      neovim \
       ngrep \
       nmap \
       openssl \
       python \
       tmux \
       tree \
-      unzip
+      unzip \
+	  vim
     brew tap homebrew/cask-versions
     brew cask install --appdir="/Applications" \
       iterm2 \
