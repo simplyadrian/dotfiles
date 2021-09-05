@@ -41,12 +41,13 @@ relies_on() {
 #
 # Container Aliases
 #
-aws() {
-  docker run -it --rm \
-    -v "${HOME}/.aws:/root/.aws" \
-    --log-driver none \
-    --name aws \
-    ${DOCKER_REPO_PREFIX}/awscli "$@"
+aws(){
+	docker run -it --rm \
+		-v "${HOME}/.aws:/root/.aws" \
+		-v "${HOME}:/root
+		--log-driver none \
+		--name aws \
+		${DOCKER_REPO_PREFIX}/awscli "$@"
 }
 
 gitsome() {
@@ -80,17 +81,18 @@ nmap() {
     --net host \
     ${DOCKER_REPO_PREFIX}/nmap "$@"
 }
-plex() {
-  docker run \
-    -d \
-    --name plex \
-    --network=host \
-    -e TZ="American/Chicago" \
-    -e PLEX_CLAIM="claim-bnJbCxNLWbMGUVzpiA4P" \
-    -v /mnt/plexmediaserver:/config \
-    -v /tmp:/transcode \
-    -v /mnt:/data \
-    plexinc/pms-docker
+plex(){
+	docker run \
+    --disable-content-trust \
+	-d \
+	--name plex \
+	--network=host \
+	-e TZ="American/Chicago" \
+	-e PLEX_CLAIM="claim-bnJbCxNLWbMGUVzpiA4P" \
+	-v /mnt/plexmediaserver:/config \
+	-v /tmp:/transcode \
+	-v /mnt:/data \
+	plexinc/pms-docker
 }
 s3cmdocker() {
   del_stopped s3cmd
@@ -105,7 +107,9 @@ s3cmdocker() {
 sonarr() {
   del_stopped sonarr
 
-  docker run -d \
+	docker run
+    --disable-content-trust \
+    -d \
     -v /etc/localtime:/etc/localtime:ro \
     -v "${HOME}/Torrents:/downloads" \
     -v "/mnt/tvshows:/tv" \
@@ -129,17 +133,19 @@ traceroute() {
 transmission() {
   del_stopped transmission
 
-  docker run -d \
-    -v "${HOME}/Torrents:/downloads" \
-    -v "${HOME}/.transmission:/config" \
-    -e PGID=1000 \
-    -e PUID=1000 \
-    -e TZ=America/Chicago \
-    -p 9091:9091 \
-    -p 51413:51413 \
-    -p 51413:51413/udp \
-    --name transmission \
-    linuxserver/transmission
+	docker run
+    --disable-content-trust \
+	-d \
+	-v "${HOME}/Torrents:/downloads" \
+	-v "${HOME}/.transmission:/config" \
+	-e PGID=1000 \
+	-e PUID=1000 \
+	-e TZ=America/Chicago \
+	-p 9091:9091 \
+	-p 51413:51413 \
+	-p 51413:51413/udp \
+	--name transmission \
+	linuxserver/transmission
 
   sudo hostess add transmission "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' transmission)"
   #browser-exec "http://transmission:9091"
