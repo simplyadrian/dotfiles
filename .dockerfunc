@@ -82,6 +82,7 @@ nmap(){
 }
 plex(){
 	docker run \
+        --disable-content-trust \
 	-d \
 	--name plex \
 	--network=host \
@@ -105,7 +106,9 @@ s3cmdocker(){
 sonarr(){
 	del_stopped sonarr
 
-	docker run -d \
+	docker run 
+                --disable-content-trust \
+	        -d \
 		-v /etc/localtime:/etc/localtime:ro \
 		-v "${HOME}/Torrents:/downloads" \
 		-v "/mnt/tvshows:/tv" \
@@ -129,7 +132,9 @@ traceroute(){
 transmission(){
 	del_stopped transmission
 
-	docker run -d \
+	docker run
+                --disable-content-trust \
+	        -d \
 		-v "${HOME}/Torrents:/downloads" \
 		-v "${HOME}/.transmission:/config" \
 		-e PGID=1000 \
