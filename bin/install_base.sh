@@ -169,7 +169,7 @@ install_mac_base() {
 # sets up apt sources
 setup_sources() {
   cat <<-EOF >/etc/apt/sources.list
-	deb-src http://archive.ubuntu.com/ubuntu focal main restricted
+  deb-src http://archive.ubuntu.com/ubuntu focal main restricted
   deb http://us.archive.ubuntu.com/ubuntu/ focal main restricted
   deb-src http://us.archive.ubuntu.com/ubuntu/ focal universe main restricted multiverse
   deb http://us.archive.ubuntu.com/ubuntu/ focal-updates main restricted
@@ -186,7 +186,7 @@ setup_sources() {
   deb-src http://security.ubuntu.com/ubuntu focal-security universe main restricted multiverse
   deb http://security.ubuntu.com/ubuntu focal-security universe
   deb http://security.ubuntu.com/ubuntu focal-security multiverse
-	EOF
+  EOF
 
   # add docker gpg key
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
