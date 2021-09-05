@@ -44,7 +44,7 @@ relies_on() {
 aws(){
 	docker run -it --rm \
 		-v "${HOME}/.aws:/root/.aws" \
-		-v "${HOME}:/root
+		-v "${HOME}:/root" \
 		--log-driver none \
 		--name aws \
 		${DOCKER_REPO_PREFIX}/awscli "$@"
