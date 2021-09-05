@@ -261,6 +261,8 @@ install_linux_base() {
   apt-get autoremove
   apt-get autoclean
   apt-get clean
+
+  snap install docker
 }
 
 # install docker for macosx
