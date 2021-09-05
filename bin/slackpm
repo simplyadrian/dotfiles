@@ -15,95 +15,95 @@ set -e
 set -o pipefail
 
 # Print a usage message and exit.
-usage(){
-	local name
-	name=$(basename "$0")
+usage() {
+  local name
+  name=$(basename "$0")
 
-	cat >&2 <<-EOF
+  cat >&2 <<-EOF
 	${name} [user] [message]
 
 	You will also need to set \$SLACK_TOKEN for authentication.
 	You can generate a Web Api Token here: https://api.slack.com/web
 	EOF
-	exit 1
+  exit 1
 }
 
 [ "$SLACK_TOKEN" ] || usage
 
 # Print usage with --help or -h
 if [ "$#" -lt 2 ]; then
-	usage;
+  usage
 fi
 
-nick_to_userid(){
-	local nick=$1
+nick_to_userid() {
+  local nick=$1
 
-	# get the users
-	local users
-	users=$(curl -sSL -X POST \
-		--data-urlencode "token=${SLACK_TOKEN}" \
-		--data-urlencode "presence=1" \
-		https://slack.com/api/users.list | jq '.members')
+  # get the users
+  local users
+  users=$(curl -sSL -X POST \
+    --data-urlencode "token=${SLACK_TOKEN}" \
+    --data-urlencode "presence=1" \
+    https://slack.com/api/users.list | jq '.members')
 
-	# find the user we want
-	local user
-	user=$(echo "$users" | jq '.[] | select(.name == "'"${nick}"'")')
+  # find the user we want
+  local user
+  user=$(echo "$users" | jq '.[] | select(.name == "'"${nick}"'")')
 
-	if [[ -z "$user" ]]; then
-		echo "Could not find user with nick ${nick}."
-		return 1
-	fi
+  if [[ -z "$user" ]]; then
+    echo "Could not find user with nick ${nick}."
+    return 1
+  fi
 
-	# set presence and userid
-	presence=$(echo "$user" | jq --raw-output '.presence')
-	userid=$(echo "$user" | jq --raw-output '.id')
+  # set presence and userid
+  presence=$(echo "$user" | jq --raw-output '.presence')
+  userid=$(echo "$user" | jq --raw-output '.id')
 
-	echo "Sending private message to:"
-	echo "  User:    ${nick}"
-	echo "  Status:  ${presence}"
+  echo "Sending private message to:"
+  echo "  User:    ${nick}"
+  echo "  Status:  ${presence}"
 }
 
-user_to_channelid(){
-	local user=$1
+user_to_channelid() {
+  local user=$1
 
-	# get the im channels
-	local channels
-	channels=$(curl -sSL -X POST \
-		--data-urlencode "token=${SLACK_TOKEN}" \
-		https://slack.com/api/im.list | jq '.ims')
+  # get the im channels
+  local channels
+  channels=$(curl -sSL -X POST \
+    --data-urlencode "token=${SLACK_TOKEN}" \
+    https://slack.com/api/im.list | jq '.ims')
 
-	# find the user we want
-	local channel
-	channel=$(echo "$channels" | jq '.[] | select(.user == "'"${user}"'")')
+  # find the user we want
+  local channel
+  channel=$(echo "$channels" | jq '.[] | select(.user == "'"${user}"'")')
 
-	if [[ -z "$channel" ]]; then
-		echo "Could not find im channel with user id ${user}."
-		return 1
-	fi
+  if [[ -z "$channel" ]]; then
+    echo "Could not find im channel with user id ${user}."
+    return 1
+  fi
 
-	# set channelid
-	channelid=$(echo "$channel" | jq --raw-output '.id')
+  # set channelid
+  channelid=$(echo "$channel" | jq --raw-output '.id')
 }
 
-send_message(){
-	local nick=$1
-	local message=${*:2}
+send_message() {
+  local nick=$1
+  local message=${*:2}
 
-	# get the users id
-	nick_to_userid "${nick}"
+  # get the users id
+  nick_to_userid "${nick}"
 
-	# get the channel id for the im with this user
-	user_to_channelid "${userid}"
+  # get the channel id for the im with this user
+  user_to_channelid "${userid}"
 
-	local postresp
-	postresp=$(curl -sSL -X POST \
-		--data-urlencode "token=${SLACK_TOKEN}" \
-		--data-urlencode "channel=${channelid}" \
-		--data-urlencode "text=${message}" \
-		--data-urlencode "as_user=1" \
-		https://slack.com/api/chat.postMessage)
+  local postresp
+  postresp=$(curl -sSL -X POST \
+    --data-urlencode "token=${SLACK_TOKEN}" \
+    --data-urlencode "channel=${channelid}" \
+    --data-urlencode "text=${message}" \
+    --data-urlencode "as_user=1" \
+    https://slack.com/api/chat.postMessage)
 
-	echo "$postresp" | jq .
+  echo "$postresp" | jq .
 }
 
 send_message "$@"

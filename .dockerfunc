@@ -6,169 +6,169 @@ export DOCKER_REPO_PREFIX=jess
 #
 # Helper Functions
 #
-dcleanup(){
-	local containers
-	containers=( $(docker ps -aq 2>/dev/null) )
-	docker rm "${containers[@]}" 2>/dev/null
-	local volumes
-	volumes=( $(docker ps --filter status=exited -q 2>/dev/null) )
-	docker rm -v "${volumes[@]}" 2>/dev/null
-	local images
-	images=( $(docker images --filter dangling=true -q 2>/dev/null) )
-	docker rmi "${images[@]}" 2>/dev/null
+dcleanup() {
+  local containers
+  containers=($(docker ps -aq 2>/dev/null))
+  docker rm "${containers[@]}" 2>/dev/null
+  local volumes
+  volumes=($(docker ps --filter status=exited -q 2>/dev/null))
+  docker rm -v "${volumes[@]}" 2>/dev/null
+  local images
+  images=($(docker images --filter dangling=true -q 2>/dev/null))
+  docker rmi "${images[@]}" 2>/dev/null
 }
-del_stopped(){
-	local name=$1
-	local state
-	state=$(docker inspect --format "{{.State.Running}}" "$name" 2>/dev/null)
+del_stopped() {
+  local name=$1
+  local state
+  state=$(docker inspect --format "{{.State.Running}}" "$name" 2>/dev/null)
 
-	if [[ "$state" == "false" ]]; then
-		docker rm "$name"
-	fi
+  if [[ "$state" == "false" ]]; then
+    docker rm "$name"
+  fi
 }
-relies_on(){
-	for container in "$@"; do
-		local state
-		state=$(docker inspect --format "{{.State.Running}}" "$container" 2>/dev/null)
+relies_on() {
+  for container in "$@"; do
+    local state
+    state=$(docker inspect --format "{{.State.Running}}" "$container" 2>/dev/null)
 
-		if [[ "$state" == "false" ]] || [[ "$state" == "" ]]; then
-			echo "$container is not running, starting it for you."
-			$container
-		fi
-	done
+    if [[ "$state" == "false" ]] || [[ "$state" == "" ]]; then
+      echo "$container is not running, starting it for you."
+      $container
+    fi
+  done
 }
 
 #
 # Container Aliases
 #
-aws(){
-	docker run -it --rm \
-		-v "${HOME}/.aws:/root/.aws" \
-		--log-driver none \
-		--name aws \
-		${DOCKER_REPO_PREFIX}/awscli "$@"
+aws() {
+  docker run -it --rm \
+    -v "${HOME}/.aws:/root/.aws" \
+    --log-driver none \
+    --name aws \
+    ${DOCKER_REPO_PREFIX}/awscli "$@"
 }
 
-gitsome(){
-	docker run --rm -it \
-		-v /etc/localtime:/etc/localtime:ro \
-		--name gitsome \
-		--hostname gitsome \
-		-v "${HOME}/.gitsomeconfig:/home/anon/.gitsomeconfig" \
-		-v "${HOME}/.gitsomeconfigurl:/home/anon/.gitsomeconfigurl" \
-		${DOCKER_REPO_PREFIX}/gitsome
+gitsome() {
+  docker run --rm -it \
+    -v /etc/localtime:/etc/localtime:ro \
+    --name gitsome \
+    --hostname gitsome \
+    -v "${HOME}/.gitsomeconfig:/home/anon/.gitsomeconfig" \
+    -v "${HOME}/.gitsomeconfigurl:/home/anon/.gitsomeconfigurl" \
+    ${DOCKER_REPO_PREFIX}/gitsome
 }
-hollywood(){
-	docker run --rm -it \
-		--name hollywood \
-		${DOCKER_REPO_PREFIX}/hollywood
+hollywood() {
+  docker run --rm -it \
+    --name hollywood \
+    ${DOCKER_REPO_PREFIX}/hollywood
 }
-htop(){
-	docker run --rm -it \
-		--pid host \
-		--net none \
-		--name htop \
-		${DOCKER_REPO_PREFIX}/htop
+htop() {
+  docker run --rm -it \
+    --pid host \
+    --net none \
+    --name htop \
+    ${DOCKER_REPO_PREFIX}/htop
 }
-netcat(){
-	docker run --rm -it \
-		--net host \
-		${DOCKER_REPO_PREFIX}/netcat "$@"
+netcat() {
+  docker run --rm -it \
+    --net host \
+    ${DOCKER_REPO_PREFIX}/netcat "$@"
 }
-nmap(){
-	docker run --rm -it \
-		--net host \
-		${DOCKER_REPO_PREFIX}/nmap "$@"
+nmap() {
+  docker run --rm -it \
+    --net host \
+    ${DOCKER_REPO_PREFIX}/nmap "$@"
 }
-plex(){
-	docker run \
-	-d \
-	--name plex \
-	--network=host \
-	-e TZ="American/Chicago" \
-	-e PLEX_CLAIM="claim-bnJbCxNLWbMGUVzpiA4P" \
-	-v /mnt/plexmediaserver:/config \
-	-v /tmp:/transcode \
-	-v /mnt:/data \
-	plexinc/pms-docker
+plex() {
+  docker run \
+    -d \
+    --name plex \
+    --network=host \
+    -e TZ="American/Chicago" \
+    -e PLEX_CLAIM="claim-bnJbCxNLWbMGUVzpiA4P" \
+    -v /mnt/plexmediaserver:/config \
+    -v /tmp:/transcode \
+    -v /mnt:/data \
+    plexinc/pms-docker
 }
-s3cmdocker(){
-	del_stopped s3cmd
+s3cmdocker() {
+  del_stopped s3cmd
 
-	docker run --rm -it \
-		-e AWS_ACCESS_KEY="${DOCKER_AWS_ACCESS_KEY}" \
-		-e AWS_SECRET_KEY="${DOCKER_AWS_ACCESS_SECRET}" \
-		-v "$(pwd):/root/s3cmd-workspace" \
-		--name s3cmd \
-		${DOCKER_REPO_PREFIX}/s3cmd "$@"
+  docker run --rm -it \
+    -e AWS_ACCESS_KEY="${DOCKER_AWS_ACCESS_KEY}" \
+    -e AWS_SECRET_KEY="${DOCKER_AWS_ACCESS_SECRET}" \
+    -v "$(pwd):/root/s3cmd-workspace" \
+    --name s3cmd \
+    ${DOCKER_REPO_PREFIX}/s3cmd "$@"
 }
-sonarr(){
-	del_stopped sonarr
+sonarr() {
+  del_stopped sonarr
 
-	docker run -d \
-		-v /etc/localtime:/etc/localtime:ro \
-		-v "${HOME}/Torrents:/downloads" \
-		-v "/mnt/tvshows:/tv" \
-		-v "${HOME}/.sonarr:/config" \
-		-e PUID=1000 \
-		-e PGID=1000 \
-		-p 8989:8989 \
-		--name sonarr \
-		linuxserver/sonarr
+  docker run -d \
+    -v /etc/localtime:/etc/localtime:ro \
+    -v "${HOME}/Torrents:/downloads" \
+    -v "/mnt/tvshows:/tv" \
+    -v "${HOME}/.sonarr:/config" \
+    -e PUID=1000 \
+    -e PGID=1000 \
+    -p 8989:8989 \
+    --name sonarr \
+    linuxserver/sonarr
 }
-telnet(){
-	docker run -it --rm \
-		--log-driver none \
-		${DOCKER_REPO_PREFIX}/telnet "$@"
+telnet() {
+  docker run -it --rm \
+    --log-driver none \
+    ${DOCKER_REPO_PREFIX}/telnet "$@"
 }
-traceroute(){
-	docker run --rm -it \
-		--net host \
-		${DOCKER_REPO_PREFIX}/traceroute "$@"
+traceroute() {
+  docker run --rm -it \
+    --net host \
+    ${DOCKER_REPO_PREFIX}/traceroute "$@"
 }
-transmission(){
-	del_stopped transmission
+transmission() {
+  del_stopped transmission
 
-	docker run -d \
-		-v "${HOME}/Torrents:/downloads" \
-		-v "${HOME}/.transmission:/config" \
-		-e PGID=1000 \
-		-e PUID=1000 \
-		-e TZ=America/Chicago \
-		-p 9091:9091 \
-		-p 51413:51413 \
-		-p 51413:51413/udp \
-		--name transmission \
-		linuxserver/transmission
+  docker run -d \
+    -v "${HOME}/Torrents:/downloads" \
+    -v "${HOME}/.transmission:/config" \
+    -e PGID=1000 \
+    -e PUID=1000 \
+    -e TZ=America/Chicago \
+    -p 9091:9091 \
+    -p 51413:51413 \
+    -p 51413:51413/udp \
+    --name transmission \
+    linuxserver/transmission
 
-	sudo hostess add transmission "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' transmission)"
-	#browser-exec "http://transmission:9091"
+  sudo hostess add transmission "$(docker inspect --format '{{.NetworkSettings.Networks.bridge.IPAddress}}' transmission)"
+  #browser-exec "http://transmission:9091"
 }
 
 ###
 ### Awesome sauce by @jpetazzo
 ###
 if command -v "docker" &>/dev/null; then
-	command_not_found_handle () {
-		# Check if there is a container image with that name
-		if ! docker inspect --format '{{ .Author }}' "$1" >&/dev/null ; then
-			echo "$0: $1: command not found"
-			return
-		fi
+  command_not_found_handle() {
+    # Check if there is a container image with that name
+    if ! docker inspect --format '{{ .Author }}' "$1" >&/dev/null; then
+      echo "$0: $1: command not found"
+      return
+    fi
 
-		# Check that it's really the name of the image, not a prefix
-		if docker inspect --format '{{ .Id }}' "$1" | grep -q "^$1" ; then
-			echo "$0: $1: command not found"
-			return
-		fi
+    # Check that it's really the name of the image, not a prefix
+    if docker inspect --format '{{ .Id }}' "$1" | grep -q "^$1"; then
+      echo "$0: $1: command not found"
+      return
+    fi
 
-		docker run -ti -u "$(whoami)" -w "$HOME" \
-			"$(env | cut -d= -f1 | awk '{print "-e", $1}')" \
-			--device /dev/snd \
-			-v /etc/passwd:/etc/passwd:ro \
-			-v /etc/group:/etc/group:ro \
-			-v /etc/localtime:/etc/localtime:ro \
-			-v /home:/home \
-			"${DOCKER_REPO_PREFIX}/${1}" "$@"
-	}
+    docker run -ti -u "$(whoami)" -w "$HOME" \
+      "$(env | cut -d= -f1 | awk '{print "-e", $1}')" \
+      --device /dev/snd \
+      -v /etc/passwd:/etc/passwd:ro \
+      -v /etc/group:/etc/group:ro \
+      -v /etc/localtime:/etc/localtime:ro \
+      -v /home:/home \
+      "${DOCKER_REPO_PREFIX}/${1}" "$@"
+  }
 fi

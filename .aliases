@@ -2,35 +2,35 @@
 
 # Check for various OS openers. Quit as soon as we find one that works.
 for opener in browser-exec xdg-open cmd.exe cygstart "start" open; do
-	if command -v $opener >/dev/null 2>&1; then
-		if [[ "$opener" == "cmd.exe" ]]; then
-			# shellcheck disable=SC2139
-			alias open="$opener /c start";
-		else
-			# shellcheck disable=SC2139
-			alias open="$opener";
-		fi
-		break;
-	fi
+  if command -v $opener >/dev/null 2>&1; then
+    if [[ "$opener" == "cmd.exe" ]]; then
+      # shellcheck disable=SC2139
+      alias open="$opener /c start"
+    else
+      # shellcheck disable=SC2139
+      alias open="$opener"
+    fi
+    break
+  fi
 done
 
 # Linux specific aliases, work on both MacOS and Linux.
 pbcopy() {
-	stdin=$(</dev/stdin);
-	pbcopy="$(which pbcopy)";
-	if [[ -n "$pbcopy" ]]; then
-		echo "$stdin" | "$pbcopy"
-	else
-		echo "$stdin" | xclip -selection clipboard
-	fi
+  stdin=$(</dev/stdin)
+  pbcopy="$(which pbcopy)"
+  if [[ -n "$pbcopy" ]]; then
+    echo "$stdin" | "$pbcopy"
+  else
+    echo "$stdin" | xclip -selection clipboard
+  fi
 }
 pbpaste() {
-	pbpaste="$(which pbpaste)";
-	if [[ -n "$pbpaste" ]]; then
-		"$pbpaste"
-	else
-		xclip -selection clipboard
-	fi
+  pbpaste="$(which pbpaste)"
+  if [[ -n "$pbpaste" ]]; then
+    "$pbpaste"
+  else
+    xclip -selection clipboard
+  fi
 }
 
 # Easier navigation: .., ..., ...., ....., ~ and -
@@ -48,10 +48,10 @@ alias h="history"
 alias gc=". /usr/local/bin/gitdate && git commit -v "
 
 # Detect which `ls` flavor is in use
-if ls --color > /dev/null 2>&1; then # GNU `ls`
-	colorflag="--color"
+if ls --color >/dev/null 2>&1; then # GNU `ls`
+  colorflag="--color"
 else # OS X `ls`
-	colorflag="-G"
+  colorflag="-G"
 fi
 
 # List all files colorized in long format
@@ -96,13 +96,13 @@ alias sniff="sudo ngrep -d 'en1' -t '^(GET|POST) ' 'tcp and port 80'"
 alias httpdump="sudo tcpdump -i en1 -n -s 0 -w - | grep -a -o -E \"Host\\: .*|GET \\/.*\""
 
 # Canonical hex dump; some systems have this symlinked
-command -v hd > /dev/null || alias hd="hexdump -C"
+command -v hd >/dev/null || alias hd="hexdump -C"
 
 # OS X has no `md5sum`, so use `md5` as a fallback
-command -v md5sum > /dev/null || alias md5sum="md5"
+command -v md5sum >/dev/null || alias md5sum="md5"
 
 # OS X has no `sha1sum`, so use `shasum` as a fallback
-command -v sha1sum > /dev/null || alias sha1sum="shasum"
+command -v sha1sum >/dev/null || alias sha1sum="shasum"
 
 # URL-encode strings
 alias urlencode='python -c "import sys, urllib as ul; print ul.quote_plus(sys.argv[1]);"'
@@ -118,8 +118,8 @@ alias map="xargs -n1"
 
 # One of @janmoesen’s ProTip™s
 for method in GET HEAD POST PUT DELETE TRACE OPTIONS; do
-	# shellcheck disable=SC2139,SC2140
-	alias "$method"="lwp-request -m \"$method\""
+  # shellcheck disable=SC2139,SC2140
+  alias "$method"="lwp-request -m \"$method\""
 done
 
 # Kill all the tabs in Chrome to free up memory
