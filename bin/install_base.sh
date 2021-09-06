@@ -169,7 +169,7 @@ install_mac_base() {
 # sets up apt sources
 setup_sources() {
   cat <<-EOF >/etc/apt/sources.list
-	deb-src http://archive.ubuntu.com/ubuntu focal main restricted
+  deb-src http://archive.ubuntu.com/ubuntu focal main restricted
   deb http://us.archive.ubuntu.com/ubuntu/ focal main restricted
   deb-src http://us.archive.ubuntu.com/ubuntu/ focal universe main restricted multiverse
   deb http://us.archive.ubuntu.com/ubuntu/ focal-updates main restricted
