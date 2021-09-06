@@ -158,9 +158,7 @@ install_mac_base() {
       unzip \
 	  vim
     brew tap homebrew/cask-versions
-    brew cask install --appdir="/Applications" \
-      iterm2 \
-      slack
+	brew install --cask iterm2
     echo "Completed installing base packages via homebrew"
   )
 }
@@ -302,47 +300,61 @@ install_scripts() {
 }
 
 install_vim() {
-  # Install node, needed for coc.vim
-  curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | sudo apt-key add -
+  if [[ $PLATFORM == 'Linux' ]]; then
+	  # Install node, needed for coc.vim
+	  curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | sudo apt-key add -
 
-  # FROM: https://github.com/nodesource/distributions/blob/master/README.md
-  # Replace with the branch of Node.js or io.js you want to install: node_6.x,
-  # node_8.x, etc...
-  VERSION=node_14.x
-  # The below command will set this correctly, but if lsb_release isn't available, you can set it manually:
-  # - For Debian distributions: jessie, sid, etc...
-  # - For Ubuntu distributions: xenial, bionic, etc...
-  # - For Debian or Ubuntu derived distributions your best option is to use
-  # the codename corresponding to the upstream release your distribution is
-  # based off. This is an advanced scenario and unsupported if your
-  # distribution is not listed as supported per earlier in this README.
-  DISTRO="$(lsb_release -s -c)"
-  echo "deb https://deb.nodesource.com/$VERSION $DISTRO main" | sudo tee /etc/apt/sources.list.d/nodesource.list
-  echo "deb-src https://deb.nodesource.com/$VERSION $DISTRO main" | sudo tee -a /etc/apt/sources.list.d/nodesource.list
+	  # FROM: https://github.com/nodesource/distributions/blob/master/README.md
+	  # Replace with the branch of Node.js or io.js you want to install: node_6.x,
+	  # node_8.x, etc...
+	  VERSION=node_14.x
+	  # The below command will set this correctly, but if lsb_release isn't available, you can set it manually:
+	  # - For Debian distributions: jessie, sid, etc...
+	  # - For Ubuntu distributions: xenial, bionic, etc...
+	  # - For Debian or Ubuntu derived distributions your best option is to use
+	  # the codename corresponding to the upstream release your distribution is
+	  # based off. This is an advanced scenario and unsupported if your
+	  # distribution is not listed as supported per earlier in this README.
+	  DISTRO="$(lsb_release -s -c)"
+	  echo "deb https://deb.nodesource.com/$VERSION $DISTRO main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+	  echo "deb-src https://deb.nodesource.com/$VERSION $DISTRO main" | sudo tee -a /etc/apt/sources.list.d/nodesource.list
 
-  sudo apt update || true
-  sudo apt install -y \
-    nodejs \
-    --no-install-recommends
+	  sudo apt update || true
+	  sudo apt install -y \
+		nodejs \
+		--no-install-recommends
 
-  # create subshell
-  (
-    cd "$HOME"
+	  # create subshell
+	  (
+		cd "$HOME"
 
-    # install .vim files
-    sudo rm -rf "${HOME}/.vim"
-    git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
+		# install .vim files
+		sudo rm -rf "${HOME}/.vim"
+		git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
+		(
+		  cd "${HOME}/.vim"
+		  make install
+		)
+
+		# update alternatives to vim
+		sudo update-alternatives --install /usr/bin/vi vi "$(command -v vim)" 60
+		sudo update-alternatives --config vi
+		sudo update-alternatives --install /usr/bin/editor editor "$(command -v vim)" 60
+		sudo update-alternatives --config editor
+	  )
+  elif [[ $PLATFORM == 'Darwin' ]]; then
     (
-      cd "${HOME}/.vim"
-      make install
-    )
+      cd "$HOME"
 
-    # update alternatives to vim
-    sudo update-alternatives --install /usr/bin/vi vi "$(command -v vim)" 60
-    sudo update-alternatives --config vi
-    sudo update-alternatives --install /usr/bin/editor editor "$(command -v vim)" 60
-    sudo update-alternatives --config editor
-  )
+      # install .vim files
+      sudo rm -rf "${HOME}/.vim"
+      git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
+      (
+        cd "${HOME}/.vim"
+        make install
+      )
+    )
+  fi
 }
 
 usage() {
