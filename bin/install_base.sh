@@ -185,7 +185,7 @@ setup_sources() {
   deb-src http://security.ubuntu.com/ubuntu focal-security universe main restricted multiverse
   deb http://security.ubuntu.com/ubuntu focal-security universe
   deb http://security.ubuntu.com/ubuntu focal-security multiverse
-  EOF
+	EOF
 
   # add docker gpg key
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
