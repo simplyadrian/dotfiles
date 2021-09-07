@@ -264,7 +264,7 @@ install_linux_base() {
 
 # install docker for macosx
 install_dockerformac() {
-  curl -o /tmp/Docker.dmg -sSL https://download.docker.com/mac/stable/Docker.dmg
+  curl -o /tmp/Docker.dmg -sSL https://desktop.docker.com/mac/stable/amd64/Docker.dmg
   hdiutil attach /tmp/Docker.dmg
   sudo /bin/cp /Volumes/Docker/Docker.app/Contents/Library/LaunchServices/com.docker.vmnetd /Library/PrivilegedHelperTools
   sudo /bin/cp /Applications/Docker.app/Contents/Resources/com.docker.vmnetd.plist /Library/LaunchDaemons/
