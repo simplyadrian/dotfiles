@@ -266,11 +266,7 @@ install_linux_base() {
 install_dockerformac() {
   curl -o /tmp/Docker.dmg -sSL https://desktop.docker.com/mac/stable/amd64/Docker.dmg
   hdiutil attach /tmp/Docker.dmg
-  sudo /bin/cp /Volumes/Docker/Docker.app/Contents/Library/LaunchServices/com.docker.vmnetd /Library/PrivilegedHelperTools
-  sudo /bin/cp /Applications/Docker.app/Contents/Resources/com.docker.vmnetd.plist /Library/LaunchDaemons/
-  sudo /bin/chmod 544 /Library/PrivilegedHelperTools/com.docker.vmnetd
-  sudo /bin/chmod 644 /Library/LaunchDaemons/com.docker.vmnetd.plist
-  sudo /bin/launchctl load /Library/LaunchDaemons/com.docker.vmnetd.plist
+  sudo /bin/cp -Rf /Volumes/Docker/Docker.app /Applications/
   hdiutil detach /Volumes/Docker
   echo "Docker has been installed."
 }
