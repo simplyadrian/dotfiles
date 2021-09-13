@@ -129,6 +129,7 @@ install_mac_base() {
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     brew update && brew install \
       bash-completion \
+      bash \
       bc \
       bzip2 \
       cmake \
