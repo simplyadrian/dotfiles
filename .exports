@@ -39,3 +39,5 @@ export DOCKER_CONTENT_TRUST=1
 
 # set xdg data dirs for dmenu to source
 export XDG_DATA_DIRS=/usr/share/
+
+export ORACLE_PATH=~/dotfiles/
