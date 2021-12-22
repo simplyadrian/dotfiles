@@ -17,6 +17,7 @@
 
 	# Checkout a pull request from origin (of a github repository)
 	pr = !"pr() { git fetch origin pull/$1/head:pr-$1; git checkout pr-$1; }; pr"
+	mr = !sh -c 'git fetch $1 merge-requests/$2/head:mr-$1-$2 && git checkout mr-$1-$2' -
 
 	# Clone a repository including all submodules
 	c = clone --recursive
@@ -203,3 +204,8 @@
 	helper = cache --timeout 30000
 [url "ssh://git@github.com/"]
 	insteadOf = https://github.com/
+[filter "lfs"]
+	required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
