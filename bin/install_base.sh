@@ -32,7 +32,6 @@ get_user() {
 doit() {
   if [[ $PLATFORM == 'Darwin' ]]; then
     install_mac_base
-    install_dockerformac
     install_scripts
   elif [[ $PLATFORM == 'Linux' ]]; then
     export DEBIAN_FRONTEND=noninteractive
@@ -133,7 +132,9 @@ install_mac_base() {
       bc \
       bzip2 \
       cmake \
+	  colima \
       curl \
+	  docker \
       findutils \
       fortune \
       gcc \
@@ -261,15 +262,6 @@ install_linux_base() {
   apt-get clean
 
   snap install docker
-}
-
-# install docker for macosx
-install_dockerformac() {
-  curl -o /tmp/Docker.dmg -sSL https://desktop.docker.com/mac/stable/amd64/Docker.dmg
-  hdiutil attach /tmp/Docker.dmg
-  sudo /bin/cp -Rf /Volumes/Docker/Docker.app /Applications/
-  hdiutil detach /Volumes/Docker
-  echo "Docker has been installed."
 }
 
 # install custom scripts/binaries
