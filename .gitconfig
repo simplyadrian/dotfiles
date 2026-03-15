@@ -157,15 +157,11 @@
 	# change to maching for machines with older versions of git 1.x.x
 	default = simple
 
-[url "git@github.com:"]
-
-	pushInsteadOf = https://github.com/
-	pushInsteadOf = "github:"
-	pushInsteadOf = "git://github.com/"
-
-[url "git://github.com/"]
-
-	insteadOf = "github:"
+# NOTE: Global url insteadOf rules removed — they conflict with multi-account
+# SSH (work vs personal GitHub). Each repo should use the correct remote URL:
+#   Work:     git@github.com:<org>/<repo>.git
+#   Personal: git@github.com-personal:<user>/<repo>.git
+# Use 'git-clone-personal' helper for personal repos.
 
 [url "git@gist.github.com:"]
 
@@ -204,8 +200,6 @@
 	# (osxkeychain helper is built into macOS git, ignored on Linux)
 	helper = osxkeychain
 	helper = cache --timeout 28800
-[url "ssh://git@github.com/"]
-	insteadOf = https://github.com/
 [filter "lfs"]
 	required = true
 	clean = git-lfs clean -- %f

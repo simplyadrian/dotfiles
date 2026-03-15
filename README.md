@@ -48,7 +48,35 @@ vim .gitconfig
 - API tokens (PLEX_CLAIM, AWS keys)
 - Personal paths and host-specific config
 
-### 3. Configure Rancher Desktop
+### 3. Multi-Account GitHub (SSH)
+
+This setup supports multiple GitHub accounts via SSH host aliases. See [`ssh_config.example`](ssh_config.example).
+
+```bash
+# Set up SSH config (if not already done)
+cp ssh_config.example ~/.ssh/config
+chmod 600 ~/.ssh/config
+
+# Generate keys for each account
+ssh-keygen -t ed25519 -C "work@email.com"    -f ~/.ssh/github
+ssh-keygen -t ed25519 -C "personal@email.com" -f ~/.ssh/id_ed25519_personal
+
+# Add each public key to its GitHub account at https://github.com/settings/ssh/new
+
+# Test
+ssh -T git@github.com            # → work account
+ssh -T git@github.com-personal   # → personal account
+```
+
+**Cloning:**
+```bash
+ghclone org/repo               # clone with work account
+ghclone-personal user/repo     # clone with personal account
+ghwhoami                        # show which account a repo uses
+ghswitch                        # toggle a repo between work/personal
+```
+
+### 4. Configure Rancher Desktop
 
 After installation, launch **Rancher Desktop** and configure:
 
@@ -62,7 +90,7 @@ kubectl get nodes      # kubernetes cluster
 helm version           # helm charts
 ```
 
-### 4. (Optional) Deploy Media Stack
+### 5. (Optional) Deploy Media Stack
 
 A complete self-hosted media server stack is included:
 - Plex, Transmission, Sonarr, Radarr, Prowlarr, Bazarr, Overseerr, Flaresolverr

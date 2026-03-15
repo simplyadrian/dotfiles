@@ -1,0 +1,40 @@
+# SSH Config Template for Multi-Account GitHub
+#
+# This file is managed by dotfiles. To install:
+#   cp ssh_config.example ~/.ssh/config
+#   chmod 600 ~/.ssh/config
+#
+# Generate keys:
+#   ssh-keygen -t ed25519 -C "work@email.com"     -f ~/.ssh/github_work
+#   ssh-keygen -t ed25519 -C "personal@email.com"  -f ~/.ssh/github_personal
+#
+# Then add each public key to the corresponding GitHub account:
+#   https://github.com/settings/ssh/new
+
+# ─── Work GitHub ──────────────────────────────────────────────────────────
+# Usage: git clone git@github.com:<org>/<repo>.git
+Host github github.com
+    HostName github.com
+    IdentityFile ~/.ssh/github
+    IdentitiesOnly yes
+    User git
+
+# ─── Personal GitHub ─────────────────────────────────────────────────────
+# Usage: git clone git@github.com-personal:<user>/<repo>.git
+Host github.com-personal
+    HostName github.com
+    IdentityFile ~/.ssh/id_ed25519_personal
+    IdentitiesOnly yes
+    User git
+
+# ─── Bitbucket ────────────────────────────────────────────────────────────
+Host bitbucket bitbucket.org
+    HostName bitbucket.org
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+    User git
+
+# ─── AWS Session Manager ─────────────────────────────────────────────────
+Host i-* mi-*
+    ProxyCommand sh -c "aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters 'portNumber=%p'"
+

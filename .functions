@@ -408,3 +408,79 @@ light() {
   fi
   $src | highlight -O rtf --syntax $1 --font Inconsolata --style solarized-dark --font-size 24 | pbcopy
 }
+
+# ─── Multi-Account GitHub Helpers ─────────────────────────────────────────
+# Clone a repo using the personal GitHub account (simplyadrian)
+# Usage: ghclone-personal simplyadrian/dotfiles
+#    or: ghclone-personal https://github.com/simplyadrian/dotfiles
+ghclone-personal() {
+  local repo="$1"
+  if [[ -z "$repo" ]]; then
+    echo "Usage: ghclone-personal <owner/repo>"
+    return 1
+  fi
+  # Strip URL prefix if full URL was passed
+  repo="${repo#https://github.com/}"
+  repo="${repo#git@github.com:}"
+  repo="${repo%.git}"
+  git clone "git@github.com-personal:${repo}.git"
+}
+
+# Clone a repo using the work GitHub account
+# Usage: ghclone owner/repo
+ghclone() {
+  local repo="$1"
+  if [[ -z "$repo" ]]; then
+    echo "Usage: ghclone <owner/repo>"
+    return 1
+  fi
+  repo="${repo#https://github.com/}"
+  repo="${repo#git@github.com:}"
+  repo="${repo%.git}"
+  git clone "git@github.com:${repo}.git"
+}
+
+# Show which GitHub account a repo is using
+# Run from inside a git repo
+ghwhoami() {
+  local remote
+  remote=$(git remote get-url origin 2>/dev/null)
+  if [[ -z "$remote" ]]; then
+    echo "Not a git repo or no origin remote"
+    return 1
+  fi
+
+  if [[ "$remote" == *"github.com-personal"* ]]; then
+    echo "Personal (simplyadrian) — ${remote}"
+  elif [[ "$remote" == *"github.com"* ]]; then
+    echo "Work (adrianherrera78-rldatix) — ${remote}"
+  elif [[ "$remote" == *"bitbucket"* ]]; then
+    echo "Bitbucket (adrian_herrera) — ${remote}"
+  else
+    echo "Unknown — ${remote}"
+  fi
+}
+
+# Switch a repo's remote between work and personal GitHub accounts
+ghswitch() {
+  local remote
+  remote=$(git remote get-url origin 2>/dev/null)
+  if [[ -z "$remote" ]]; then
+    echo "Not a git repo or no origin remote"
+    return 1
+  fi
+
+  if [[ "$remote" == *"github.com-personal:"* ]]; then
+    local new_remote="${remote/github.com-personal:/github.com:}"
+    git remote set-url origin "$new_remote"
+    echo "Switched to WORK: ${new_remote}"
+  elif [[ "$remote" == *"github.com:"* ]]; then
+    local new_remote="${remote/github.com:/github.com-personal:}"
+    git remote set-url origin "$new_remote"
+    echo "Switched to PERSONAL: ${new_remote}"
+  else
+    echo "Not a GitHub remote: ${remote}"
+    return 1
+  fi
+}
+
