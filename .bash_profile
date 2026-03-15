@@ -6,4 +6,11 @@ if [[ -r "${HOME}/.bashrc" ]]; then
   source "${HOME}/.bashrc"
 fi
 
-eval "$(/opt/homebrew/bin/brew shellenv)"
+# Homebrew shell environment (macOS)
+if [[ "$(uname)" == "Darwin" ]]; then
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -x /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+fi

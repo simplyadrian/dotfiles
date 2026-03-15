@@ -1,0 +1,76 @@
+###############################################################################
+# Transmission — Kubernetes Deployment + Service
+###############################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transmission
+  namespace: media
+  labels:
+    app: transmission
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: transmission
+  template:
+    metadata:
+      labels:
+        app: transmission
+    spec:
+      containers:
+        - name: transmission
+          image: lscr.io/linuxserver/transmission:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "America/Chicago"
+          ports:
+            - containerPort: 9091
+              name: web
+            - containerPort: 51413
+              name: torrent-tcp
+            - containerPort: 51413
+              protocol: UDP
+              name: torrent-udp
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: downloads
+              mountPath: /downloads
+      volumes:
+        - name: config
+          hostPath:
+            path: ${CONFIG_PATH}/transmission
+            type: DirectoryOrCreate
+        - name: downloads
+          hostPath:
+            path: ${DOWNLOADS_PATH}
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmission
+  namespace: media
+spec:
+  selector:
+    app: transmission
+  ports:
+    - name: web
+      port: 9091
+      targetPort: 9091
+    - name: torrent-tcp
+      port: 51413
+      targetPort: 51413
+    - name: torrent-udp
+      port: 51413
+      targetPort: 51413
+      protocol: UDP
+  type: NodePort
+
