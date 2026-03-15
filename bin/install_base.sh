@@ -192,7 +192,6 @@ install_mac_base() {
       curl \
       findutils \
       fortune \
-      gcc \
       git \
       git-open \
       gnu-indent \
@@ -217,6 +216,14 @@ install_mac_base() {
       tree \
       unzip \
       vim
+
+    # gcc requires compilation from source on older macOS (no bottles)
+    # and will fail on macOS 11 (Tier 3). Xcode CLT provides clang/cc which is sufficient.
+    if (( MACOS_MAJOR >= 12 )); then
+      brew install gcc 2>/dev/null || echo "⚠️  gcc install skipped (non-critical)"
+    else
+      echo "⚠️  Skipping gcc on macOS ${MACOS_MAJOR} (no Homebrew bottle available; Xcode CLT provides cc/clang)"
+    fi
 
     # Install container runtime
     if (( MACOS_MAJOR >= 12 )); then
