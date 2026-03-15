@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 
 # ~/.macos — https://mths.be/macos
-# Modernized for macOS Ventura (13) and later (System Settings era)
+# Compatible with macOS 11 (Big Sur) and later
 
-# Close any open System Settings panes, to prevent them from overriding
-# settings we're about to change
+# Close any open System Settings / System Preferences panes
 osascript -e 'tell application "System Settings" to quit' 2>/dev/null
 osascript -e 'tell application "System Preferences" to quit' 2>/dev/null
 
@@ -18,11 +17,14 @@ while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 # General UI/UX                                                               #
 ###############################################################################
 
-# Set computer name (as done via System Settings → General → Sharing)
-sudo scutil --set ComputerName "macinator"
-sudo scutil --set HostName "macinator"
-sudo scutil --set LocalHostName "macinator"
-sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.server NetBIOSName -string "macinator"
+# Set computer name (override with: macos-defaults myhost)
+# or set COMPUTER_NAME env var in ~/.extra
+COMPUTER_NAME="${1:-${COMPUTER_NAME:-$(scutil --get ComputerName)}}"
+echo "Setting computer name to: ${COMPUTER_NAME}"
+sudo scutil --set ComputerName "$COMPUTER_NAME"
+sudo scutil --set HostName "$COMPUTER_NAME"
+sudo scutil --set LocalHostName "$COMPUTER_NAME"
+sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.server NetBIOSName -string "$COMPUTER_NAME"
 
 # Set standby delay to 24 hours (default is 1 hour)
 sudo pmset -a standbydelay 86400

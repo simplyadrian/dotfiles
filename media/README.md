@@ -1,6 +1,9 @@
 # Media Stack
 
-Self-hosted media stack deployed as **Kubernetes** manifests on **Rancher Desktop**.
+Self-hosted media stack with two deployment options:
+
+- **Docker Compose** — works on macOS Big Sur and later (no Rancher Desktop required)
+- **Kubernetes** — manifests for Rancher Desktop with K8s enabled
 
 ## Services
 
@@ -54,7 +57,33 @@ Self-hosted media stack deployed as **Kubernetes** manifests on **Rancher Deskto
                     /mnt/media
 ```
 
-## Quick Start
+## Quick Start — Docker Compose (Big Sur+)
+
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or any Docker Engine with Compose v2).
+
+```bash
+# 1. Create config directories
+mkdir -p ~/docker/configs/{plex,transmission,sonarr,radarr,prowlarr,bazarr,overseerr}
+
+# 2. Copy and edit .env
+cp media/.env.example media/.env
+$EDITOR media/.env          # set MEDIA_PATH, DOWNLOADS_PATH, PLEX_CLAIM, etc.
+
+# 3. Start the stack
+cd ~/dotfiles/media
+docker compose up -d
+
+# 4. Check status
+docker compose ps
+
+# 5. View logs for a service
+docker compose logs -f sonarr
+
+# 6. Stop everything
+docker compose down
+```
+
+## Quick Start — Kubernetes (Rancher Desktop)
 
 Requires Rancher Desktop with Kubernetes enabled.
 
@@ -86,6 +115,17 @@ media_down
 
 These are loaded from `.dockerfunc`:
 
+### Docker Compose
+
+| Command | Action |
+|---|---|
+| `docker compose up -d` | Start all services |
+| `docker compose down` | Stop and remove containers |
+| `docker compose ps` | List container status |
+| `docker compose logs -f <svc>` | Tail logs for a service |
+
+### Kubernetes
+
 | Command | Action |
 |---|---|
 | `media_up` | `kubectl apply` all manifests |
@@ -96,20 +136,20 @@ These are loaded from `.dockerfunc`:
 
 ## Networking
 
-- **Plex** uses `hostNetwork: true` (required for DLNA/local network discovery)
-- All other services use ClusterIP Services for internal communication (services talk via DNS, e.g., `http://sonarr:8989`)
-- External access via NodePort services
+- **Plex** uses `host` network mode (required for DLNA/local network discovery)
+- **Docker Compose:** all other services are on the default bridge network and talk via container names (e.g., `http://sonarr:8989`)
+- **Kubernetes:** services communicate via ClusterIP DNS (e.g., `http://sonarr:8989`); external access via NodePort
 
 ## Paths
 
 | Path | Purpose |
 |---|---|
-| `~/docker/configs/<service>` | Per-service configuration (hostPath volumes) |
+| `~/docker/configs/<service>` | Per-service configuration (bind-mount volumes) |
 | `~/Torrents` | Download directory (Transmission) |
 | `/mnt/media` | Media library (movies, TV, music) |
 | `/mnt/plexmediaserver` | Plex server config |
 
-> **Note:** The k8s manifests use `hostPath` volumes with paths for user `aherrera`. Edit the YAML files if your username or paths differ.
+> **Note:** Edit `.env` (Docker Compose) or the YAML manifests (K8s) if your paths differ.
 
 ## Service Configuration
 
@@ -123,4 +163,4 @@ After deploying, configure each service through its web UI:
 6. **Overseerr** → `http://localhost:5055` — Connect to Plex, Sonarr, and Radarr
 7. **Transmission** → `http://localhost:9091` — Default credentials in pod logs
 
-> **Tip:** When configuring connections *between* services, use the Kubernetes service name (e.g., `http://sonarr:8989`) not `localhost`.
+> **Tip:** When configuring connections *between* services, use the service/container name (e.g., `http://sonarr:8989`) not `localhost`. This works with both Docker Compose and Kubernetes.

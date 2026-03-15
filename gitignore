@@ -160,5 +160,8 @@ _testmain.go
 # python virtual env
 .venv
 
+# docker compose env (may contain secrets)
+.env
+
 # linux kernel debs
 linux-*.deb

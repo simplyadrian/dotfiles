@@ -58,11 +58,22 @@ relies_on() {
 #
 # The full media stack (plex, sonarr, radarr, transmission, prowlarr, bazarr,
 # overseerr, flaresolverr) is managed via Kubernetes manifests.
+# Requires: Rancher Desktop with Kubernetes enabled (macOS 12+ / Linux)
 # Paths are templated — set CONFIG_PATH, DOWNLOADS_PATH, MEDIA_PATH,
 # PLEX_CONFIG_PATH, PLEX_TRANSCODE_PATH in ~/.extra
 # See: ~/dotfiles/media/k8s/
 #
+_media_check_kubectl() {
+  if ! command -v kubectl &>/dev/null; then
+    echo "ERROR: kubectl not found."
+    echo "  The media stack requires Rancher Desktop with Kubernetes enabled."
+    echo "  Rancher Desktop requires macOS 12 (Monterey) or later."
+    return 1
+  fi
+}
 media_up() {
+  _media_check_kubectl || return 1
+
   local media_dir="${HOME}/dotfiles/media/k8s"
   if [[ ! -d "${media_dir}" ]]; then
     echo "Media stack not found at ${media_dir}"
@@ -90,12 +101,15 @@ media_up() {
   echo "Media stack deployed. Run 'media_ps' to check status."
 }
 media_down() {
+  _media_check_kubectl || return 1
   kubectl delete namespace media
 }
 media_ps() {
+  _media_check_kubectl || return 1
   kubectl get pods -n media
 }
 media_logs() {
+  _media_check_kubectl || return 1
   if [[ -z "$1" ]]; then
     echo "Usage: media_logs <service> (e.g. media_logs plex)"
     return 1
@@ -103,6 +117,7 @@ media_logs() {
   kubectl logs -n media -l "app=$1" -f
 }
 media_svc() {
+  _media_check_kubectl || return 1
   kubectl get svc -n media
 }
 

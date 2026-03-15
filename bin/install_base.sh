@@ -7,6 +7,7 @@ set -o pipefail
 #	Uses Rancher Desktop for container runtime (docker CLI) + Kubernetes.
 
 PLATFORM=$(uname)
+MACOS_MAJOR=0
 export DEBIAN_FRONTEND=noninteractive
 
 # Detect and display OS version
@@ -14,13 +15,20 @@ check_os() {
   if [[ $PLATFORM == 'Darwin' ]]; then
     local macos_version
     macos_version=$(sw_vers -productVersion)
-    local macos_major
-    macos_major=$(echo "$macos_version" | cut -d. -f1)
+    MACOS_MAJOR=$(echo "$macos_version" | cut -d. -f1)
     echo "Detected: macOS ${macos_version} ($(sw_vers -productName))"
 
-    if (( macos_major < 13 )); then
-      echo "ERROR: macOS 13 (Ventura) or later is required. You have ${macos_version}."
+    if (( MACOS_MAJOR < 11 )); then
+      echo "ERROR: macOS 11 (Big Sur) or later is required. You have ${macos_version}."
       exit 1
+    fi
+
+    if (( MACOS_MAJOR < 12 )); then
+      echo ""
+      echo "⚠️  NOTE: macOS 11 (Big Sur) detected."
+      echo "   Rancher Desktop requires macOS 12+. Docker + Colima will be installed instead."
+      echo "   Kubernetes features (media stack k8s) will not be available on this machine."
+      echo ""
     fi
   elif [[ $PLATFORM == 'Linux' ]]; then
     if command -v lsb_release &>/dev/null; then
@@ -210,9 +218,29 @@ install_mac_base() {
       unzip \
       vim
 
-    # Install Rancher Desktop (provides docker CLI + Kubernetes)
-    brew install --cask rancher
-    brew install --cask iterm2
+    # Install container runtime
+    if (( MACOS_MAJOR >= 12 )); then
+      # macOS 12+ — Install Rancher Desktop (provides docker CLI + Kubernetes)
+      if brew list --cask rancher &>/dev/null || [[ -d "/Applications/Rancher Desktop.app" ]]; then
+        echo "Rancher Desktop already installed, upgrading..."
+        brew upgrade --cask rancher 2>/dev/null || echo "Rancher Desktop is up to date."
+      else
+        brew install --cask rancher
+      fi
+    else
+      # macOS 11 (Big Sur) — Rancher Desktop requires macOS 12+
+      # Fall back to Docker CLI + Colima
+      echo "Installing Docker CLI + Colima (Rancher Desktop requires macOS 12+)..."
+      brew install docker docker-compose colima
+    fi
+
+    # Install iTerm2
+    if brew list --cask iterm2 &>/dev/null || [[ -d "/Applications/iTerm.app" ]]; then
+      echo "iTerm2 already installed, upgrading..."
+      brew upgrade --cask iterm2 2>/dev/null || echo "iTerm2 is up to date."
+    else
+      brew install --cask iterm2
+    fi
     echo "Completed installing base packages via homebrew"
   )
 }
@@ -304,9 +332,13 @@ install_linux_base() {
     --no-install-recommends
 
   # Install Rancher Desktop (provides docker CLI + Kubernetes)
-  apt-get install -y rancher-desktop --no-install-recommends || {
-    echo "WARNING: rancher-desktop package not found. Install manually from https://rancherdesktop.io"
-  }
+  if dpkg -l rancher-desktop &>/dev/null; then
+    echo "Rancher Desktop already installed."
+  else
+    apt-get install -y rancher-desktop --no-install-recommends || {
+      echo "WARNING: rancher-desktop package not found. Install manually from https://rancherdesktop.io"
+    }
+  fi
 
   setup_sudo
 
@@ -332,41 +364,61 @@ install_scripts() {
   chmod +x /usr/local/bin/lolcat
 }
 
-# configure Rancher Desktop post-install
+# configure container runtime post-install
 configure_rancher_desktop() {
   echo "-----------------------------------------------"
-  echo " Rancher Desktop Post-Install Configuration"
+  echo " Container Runtime Post-Install Configuration"
   echo "-----------------------------------------------"
   echo ""
-  echo "Rancher Desktop has been installed. Please complete the following steps:"
-  echo ""
-  echo "1. Launch Rancher Desktop from your Applications menu."
-  echo "2. On first launch, select the following settings:"
-  echo "   - Container Engine: dockerd (moby) — this enables the 'docker' CLI"
-  echo "   - Enable Kubernetes (select your desired version)"
-  echo ""
-  echo "Rancher Desktop places CLI tools (docker, kubectl, helm, nerdctl) in ~/.rd/bin"
-  echo "This path has been added to your shell PATH via .path"
-  echo ""
 
-  # Ensure ~/.rd/bin exists for path setup
-  mkdir -p "${HOME}/.rd/bin" 2>/dev/null || true
+  if [[ $PLATFORM == 'Darwin' ]] && (( MACOS_MAJOR < 12 )); then
+    # macOS 11 — Colima path
+    echo "Docker CLI + Colima have been installed (Rancher Desktop requires macOS 12+)."
+    echo ""
+    echo "To start Colima (Docker engine):"
+    echo "  colima start"
+    echo ""
+    echo "To start with more resources:"
+    echo "  colima start --cpu 4 --memory 8"
+    echo ""
+    echo "To verify:"
+    echo "  docker ps"
+    echo ""
+    echo "⚠️  Kubernetes is NOT available with Colima on this machine."
+    echo "   The media stack k8s manifests require Rancher Desktop (macOS 12+)."
+    echo "   Docker containers (.dockerfunc) will work fine."
+  else
+    # macOS 12+ / Linux — Rancher Desktop path
+    echo "Rancher Desktop has been installed. Please complete the following steps:"
+    echo ""
+    echo "1. Launch Rancher Desktop from your Applications menu."
+    echo "2. On first launch, select the following settings:"
+    echo "   - Container Engine: dockerd (moby) — this enables the 'docker' CLI"
+    echo "   - Enable Kubernetes (select your desired version)"
+    echo ""
+    echo "Rancher Desktop places CLI tools (docker, kubectl, helm, nerdctl) in ~/.rd/bin"
+    echo "This path has been added to your shell PATH via .path"
+    echo ""
 
-  if [[ $PLATFORM == 'Darwin' ]]; then
-    echo "On macOS, Rancher Desktop also creates symlinks in /usr/local/bin."
-    echo "If you previously had Docker Desktop or Colima, you may want to:"
-    echo "  brew uninstall --cask docker 2>/dev/null"
-    echo "  brew uninstall colima 2>/dev/null"
-    echo "  brew uninstall docker 2>/dev/null"
-  elif [[ $PLATFORM == 'Linux' ]]; then
-    echo "On Linux, ensure your user is in the 'docker' group if socket access is needed:"
-    echo "  sudo groupadd docker 2>/dev/null; sudo usermod -aG docker \$USER"
+    # Ensure ~/.rd/bin exists for path setup
+    mkdir -p "${HOME}/.rd/bin" 2>/dev/null || true
+
+    if [[ $PLATFORM == 'Darwin' ]]; then
+      echo "On macOS, Rancher Desktop also creates symlinks in /usr/local/bin."
+      echo "If you previously had Docker Desktop or Colima, you may want to:"
+      echo "  brew uninstall --cask docker 2>/dev/null"
+      echo "  brew uninstall colima 2>/dev/null"
+      echo "  brew uninstall docker 2>/dev/null"
+    elif [[ $PLATFORM == 'Linux' ]]; then
+      echo "On Linux, ensure your user is in the 'docker' group if socket access is needed:"
+      echo "  sudo groupadd docker 2>/dev/null; sudo usermod -aG docker \$USER"
+    fi
+    echo ""
+    echo "After launching Rancher Desktop and selecting dockerd (moby):"
+    echo "  docker ps          # container management"
+    echo "  kubectl get nodes  # kubernetes cluster"
+    echo "  helm version       # helm charts"
   fi
-  echo ""
-  echo "After launching Rancher Desktop and selecting dockerd (moby):"
-  echo "  docker ps          # container management"
-  echo "  kubectl get nodes  # kubernetes cluster"
-  echo "  helm version       # helm charts"
   echo "-----------------------------------------------"
 }
 

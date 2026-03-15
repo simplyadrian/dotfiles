@@ -11,12 +11,14 @@
 #   6. Symlink targets    — dotfiles exist and are valid
 #   7. Python version     — no bare 'python' calls
 #   8. Path hygiene       — flag hardcoded user-specific paths
+#   9. Docker Compose     — validate compose file, env, service parity
 #
 # Usage:
 #   ./test.sh           # run all tests
 #   ./test.sh shell     # run only shell tests (syntax + shellcheck)
 #   ./test.sh yaml      # run only yaml tests
 #   ./test.sh secrets   # run only secrets scan
+#   ./test.sh docker    # run only docker compose tests
 #   ./test.sh quick     # syntax + secrets only (no shellcheck needed)
 #
 set -o pipefail
@@ -211,6 +213,18 @@ test_secrets() {
     fail ".extra is NOT gitignored — secrets may be committed!"
   fi
 
+  # Ensure .env is gitignored (compose secrets)
+  if grep -q '^\.env$' ./gitignore 2>/dev/null; then
+    pass ".env is gitignored"
+  else
+    fail ".env is NOT gitignored — compose secrets may be committed!"
+  fi
+
+  # Flag any committed .env file (not .env.example)
+  if [[ -f ./media/.env ]]; then
+    warn "media/.env exists — make sure it is NOT tracked by git"
+  fi
+
   # Check that .aws/credentials is gitignored
   if grep -q "credentials" .gitignore 2>/dev/null; then
     pass ".aws/credentials is gitignored"
@@ -394,6 +408,136 @@ test_paths() {
   fi
 }
 
+# ─── Test 9: Docker Compose ───────────────────────────────────────────────
+test_docker_compose() {
+  header "Docker Compose"
+
+  local compose_file="./media/docker-compose.yaml"
+  local env_example="./media/.env.example"
+
+  # ── File presence ──────────────────────────────────────────────────────
+  if [[ -f "$compose_file" ]]; then
+    pass "docker-compose.yaml exists"
+  else
+    fail "docker-compose.yaml is missing"
+    return 0
+  fi
+
+  if [[ -f "$env_example" ]]; then
+    pass ".env.example exists"
+  else
+    fail ".env.example is missing — users won't know which vars to set"
+  fi
+
+  # ── YAML syntax ───────────────────────────────────────────────────────
+  if command -v python3 &>/dev/null && python3 -c "import yaml" 2>/dev/null; then
+    if python3 -c "
+import yaml, sys
+try:
+    with open('$compose_file') as fh:
+        list(yaml.safe_load_all(fh))
+except Exception as e:
+    print(str(e), file=sys.stderr)
+    sys.exit(1)
+" 2>/dev/null; then
+      pass "$compose_file — valid YAML"
+    else
+      fail "$compose_file — invalid YAML"
+    fi
+  else
+    skip "PyYAML not installed (pip3 install pyyaml)"
+  fi
+
+  # ── docker compose config dry-run ─────────────────────────────────────
+  if command -v docker &>/dev/null && docker compose version &>/dev/null; then
+    if docker compose -f "$compose_file" config --quiet 2>/dev/null; then
+      pass "docker compose config — valid"
+    else
+      fail "docker compose config — compose file has errors"
+      docker compose -f "$compose_file" config 2>&1 | head -5 | sed 's/^/    /'
+    fi
+  else
+    skip "docker compose not available for config validation"
+  fi
+
+  # ── Required service definitions ──────────────────────────────────────
+  local -a expected_services=(plex transmission sonarr radarr prowlarr flaresolverr bazarr overseerr)
+  for svc in "${expected_services[@]}"; do
+    if grep -q "container_name: ${svc}" "$compose_file" 2>/dev/null; then
+      pass "service '${svc}' defined in compose"
+    else
+      fail "service '${svc}' missing from compose"
+    fi
+  done
+
+  # ── Every service should have restart policy ──────────────────────────
+  local svc_count restart_count
+  svc_count=$(grep -c 'container_name:' "$compose_file" 2>/dev/null || echo 0)
+  restart_count=$(grep -c 'restart:' "$compose_file" 2>/dev/null || echo 0)
+  if [[ "$svc_count" -eq "$restart_count" ]]; then
+    pass "All ${svc_count} services have a restart policy"
+  else
+    fail "${restart_count}/${svc_count} services have a restart policy"
+  fi
+
+  # ── Service parity: compose vs k8s ────────────────────────────────────
+  if [[ -d "./media/k8s" ]]; then
+    local -a k8s_apps
+    mapfile -t k8s_apps < <(grep -rh 'app:' media/k8s/*.yaml 2>/dev/null \
+      | awk '{print $NF}' | sort -u)
+
+    local missing=0
+    for app in "${k8s_apps[@]}"; do
+      if ! grep -q "container_name: ${app}" "$compose_file" 2>/dev/null; then
+        fail "K8s service '${app}' has no matching compose service"
+        missing=1
+      fi
+    done
+    if [[ $missing -eq 0 ]]; then
+      pass "Compose and K8s define the same services"
+    fi
+  fi
+
+  # ── .env.example covers all vars used in compose ──────────────────────
+  if [[ -f "$env_example" ]]; then
+    # Extract ${VAR_NAME:-...} or ${VAR_NAME} references
+    local -a compose_vars
+    mapfile -t compose_vars < <(grep -oE '\$\{[A-Z_]+' "$compose_file" \
+      | sed 's/\${//' | sort -u)
+
+    local env_missing=0
+    for var in "${compose_vars[@]}"; do
+      if grep -q "^${var}=" "$env_example" 2>/dev/null; then
+        pass ".env.example defines ${var}"
+      else
+        fail ".env.example is missing ${var}"
+        env_missing=1
+      fi
+    done
+    if [[ $env_missing -eq 0 && ${#compose_vars[@]} -gt 0 ]]; then
+      pass "All compose variables documented in .env.example"
+    fi
+  fi
+
+  # ── .env must be gitignored ───────────────────────────────────────────
+  if grep -q '^\.env$' ./gitignore 2>/dev/null; then
+    pass ".env is gitignored (secrets safe)"
+  else
+    fail ".env is NOT gitignored — secrets may be committed!"
+  fi
+
+  # ── No hardcoded /home/ or /Users/ paths in compose ───────────────────
+  local compose_hardcoded
+  compose_hardcoded=$(grep -n '/home/[a-z]\|/Users/[a-z]' "$compose_file" 2>/dev/null \
+    | grep -v '#' || true)
+  if [[ -z "$compose_hardcoded" ]]; then
+    pass "docker-compose.yaml has no hardcoded user paths"
+  else
+    fail "docker-compose.yaml has hardcoded user paths:"
+    echo "$compose_hardcoded" | head -3 | sed 's/^/    /'
+  fi
+}
+
 # ─── Summary ─────────────────────────────────────────────────────────────
 summary() {
   echo ""
@@ -443,9 +587,13 @@ main() {
       ;;
     yaml)
       test_yaml
+      test_docker_compose
       ;;
     secrets)
       test_secrets
+      ;;
+    docker)
+      test_docker_compose
       ;;
     quick)
       test_syntax
@@ -457,6 +605,7 @@ main() {
       test_syntax
       test_shellcheck
       test_yaml
+      test_docker_compose
       test_secrets
       test_permissions
       test_dotfiles
@@ -464,11 +613,12 @@ main() {
       test_paths
       ;;
     *)
-      echo "Usage: $0 {all|shell|yaml|secrets|quick}"
+      echo "Usage: $0 {all|shell|yaml|docker|secrets|quick}"
       echo ""
       echo "  all      Run all tests (default)"
       echo "  shell    Shell syntax + shellcheck only"
       echo "  yaml     YAML/k8s manifest validation only"
+      echo "  docker   Docker Compose validation only"
       echo "  secrets  Credential leak scan only"
       echo "  quick    Syntax + secrets + permissions (no shellcheck)"
       exit 1

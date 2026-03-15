@@ -2,8 +2,8 @@
 
 Personal dotfiles for **macOS** and **Ubuntu** workstations with Rancher Desktop, Kubernetes, and a complete media server stack.
 
-**Platform Support:** macOS (Intel/Apple Silicon) • Ubuntu 20.04+  
-**Container Runtime:** [Rancher Desktop](https://rancherdesktop.io/) (Docker CLI + Kubernetes)
+**Platform Support:** macOS 11+ Big Sur through Tahoe (Intel & Apple Silicon) • Ubuntu 20.04+  
+**Container Runtime:** [Rancher Desktop](https://rancherdesktop.io/) (macOS 12+) or Docker + Colima (macOS 11)
 
 ---
 
@@ -19,7 +19,8 @@ make
 
 This installs:
 - ✅ Base packages via Homebrew (macOS) or apt (Ubuntu)
-- ✅ Rancher Desktop (container runtime with docker CLI + k8s)
+- ✅ **macOS 12+**: Rancher Desktop (docker CLI + Kubernetes)
+- ✅ **macOS 11**: Docker CLI + Colima (no Kubernetes — Rancher Desktop requires 12+)
 - ✅ Custom shell configuration and scripts
 - ✅ kubectl, helm, k9s CLI tools
 
@@ -76,17 +77,28 @@ ghwhoami                        # show which account a repo uses
 ghswitch                        # toggle a repo between work/personal
 ```
 
-### 4. Configure Rancher Desktop
+### 4. Configure Container Runtime
 
-After installation, launch **Rancher Desktop** and configure:
+**macOS 12+ (Rancher Desktop):**
+
+Launch **Rancher Desktop** and configure:
 
 1. **Container Engine:** Select **dockerd (moby)** — enables `docker` CLI
 2. **Kubernetes:** Enable and choose your k8s version
 
+**macOS 11 (Colima):**
+
+```bash
+colima start                  # start the Docker engine
+colima start --cpu 4 --memory 8  # with more resources
+```
+
+> ⚠️ Kubernetes and the media stack k8s manifests are not available on macOS 11. Docker containers (`.dockerfunc`) work fine.
+
 Verify everything works:
 ```bash
 docker ps              # container management
-kubectl get nodes      # kubernetes cluster
+kubectl get nodes      # kubernetes cluster (macOS 12+ only)
 helm version           # helm charts
 ```
 
