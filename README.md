@@ -113,9 +113,8 @@ A complete self-hosted media server stack is included:
 
 ```bash
 # Docker Compose (all macOS versions)
-cp media/.env.example media/.env
-vim media/.env        # set your paths and tokens
-cd media && docker compose up -d
+cd ~/dotfiles/media
+docker compose up -d
 
 # Kubernetes (macOS 12+ only)
 media_up              # kubectl apply all manifests
@@ -123,6 +122,9 @@ media_ps              # check pod status
 media_logs plex       # tail logs
 media_svc             # list endpoints
 ```
+
+> All media stack variables (paths, PLEX_CLAIM, TZ, etc.) are configured in `~/.extra`.
+> See `.extra.example` for the full list.
 
 See [`media/README.md`](media/README.md) for architecture and full setup.
 
@@ -334,7 +336,6 @@ dotfiles/
 │   └── ...
 └── media/              # Media server stack
     ├── README.md       # Media stack documentation
-    ├── .env.example    # Compose environment template
     ├── docker-compose.yaml  # Docker Compose deployment
     └── k8s/            # Kubernetes manifests
         ├── namespace.yaml

@@ -11,7 +11,7 @@
 #   6. Symlink targets    — dotfiles exist and are valid
 #   7. Python version     — no bare 'python' calls
 #   8. Path hygiene       — flag hardcoded user-specific paths
-#   9. Docker Compose     — validate compose file, env, service parity
+#   9. Docker Compose     — validate compose file, .extra vars, service parity
 #
 # Usage:
 #   ./test.sh           # run all tests
@@ -223,7 +223,7 @@ test_secrets() {
     fail ".env is NOT gitignored — compose secrets may be committed!"
   fi
 
-  # Flag any committed .env file (not .env.example)
+  # Flag any committed .env file (legacy — all config is in .extra now)
   if [[ -f ./media/.env ]]; then
     warn "media/.env exists — make sure it is NOT tracked by git"
   fi
@@ -416,7 +416,7 @@ test_docker_compose() {
   header "Docker Compose"
 
   local compose_file="./media/docker-compose.yaml"
-  local env_example="./media/.env.example"
+  local extra_file="./.extra"
 
   # ── File presence ──────────────────────────────────────────────────────
   if [[ -f "$compose_file" ]]; then
@@ -424,12 +424,6 @@ test_docker_compose() {
   else
     fail "docker-compose.yaml is missing"
     return 0
-  fi
-
-  if [[ -f "$env_example" ]]; then
-    pass ".env.example exists"
-  else
-    fail ".env.example is missing — users won't know which vars to set"
   fi
 
   # ── YAML syntax ───────────────────────────────────────────────────────
@@ -503,9 +497,10 @@ except Exception as e:
     fi
   fi
 
-  # ── .env.example covers all vars used in compose ──────────────────────
-  if [[ -f "$env_example" ]]; then
-    # Extract ${VAR_NAME:-...} or ${VAR_NAME} references
+  # ── .extra covers all compose variables ────────────────────────────────
+  # Compose vars are set in ~/.extra (sourced by .bashrc), not a .env file.
+  if [[ -f "$extra_file" ]]; then
+    # Extract ${VAR_NAME:-...} or ${VAR_NAME} references from compose
     local -a compose_vars=()
     while IFS= read -r var; do
       [[ -n "$var" ]] && compose_vars+=("$var")
@@ -514,19 +509,19 @@ except Exception as e:
 
     local env_missing=0
     for var in "${compose_vars[@]}"; do
-      if grep -q "^${var}=" "$env_example" 2>/dev/null; then
-        pass ".env.example defines ${var}"
+      if grep -q "export ${var}=" "$extra_file" 2>/dev/null; then
+        pass ".extra defines ${var}"
       else
-        fail ".env.example is missing ${var}"
+        fail ".extra is missing 'export ${var}=' — compose will use defaults"
         env_missing=1
       fi
     done
     if [[ $env_missing -eq 0 && ${#compose_vars[@]} -gt 0 ]]; then
-      pass "All compose variables documented in .env.example"
+      pass "All compose variables defined in .extra"
     fi
   fi
 
-  # ── .env must be gitignored ───────────────────────────────────────────
+  # ── .env must be gitignored (safety net) ──────────────────────────────
   if grep -q '^\.env$' ./gitignore 2>/dev/null; then
     pass ".env is gitignored (secrets safe)"
   else

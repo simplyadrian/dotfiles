@@ -2,8 +2,10 @@
 # Media Stack — Docker Compose
 # Compatible with macOS Big Sur+ (no Rancher/K8s required)
 #
+# All variables are set in ~/.extra (sourced by .bashrc).
+# See .extra.example for the full list.
+#
 # Usage:
-#   cp .env.example .env   # edit paths
 #   docker compose up -d
 ###############################################################################
 

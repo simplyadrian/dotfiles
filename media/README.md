@@ -65,9 +65,9 @@ Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or a
 # 1. Create config directories
 mkdir -p ~/docker/configs/{plex,transmission,sonarr,radarr,prowlarr,bazarr,overseerr}
 
-# 2. Copy and edit .env
-cp media/.env.example media/.env
-$EDITOR media/.env          # set MEDIA_PATH, DOWNLOADS_PATH, PLEX_CLAIM, etc.
+# 2. Ensure ~/.extra has media stack vars configured
+#    See .extra.example for the full list (MEDIA_PATH, DOWNLOADS_PATH, etc.)
+vim ~/.extra
 
 # 3. Start the stack
 cd ~/dotfiles/media
@@ -149,7 +149,8 @@ These are loaded from `.dockerfunc`:
 | `/mnt/media` | Media library (movies, TV, music) |
 | `/mnt/plexmediaserver` | Plex server config |
 
-> **Note:** Edit `.env` (Docker Compose) or the YAML manifests (K8s) if your paths differ.
+> **Note:** Paths are configured via environment variables in `~/.extra` (see `.extra.example`).
+> These are picked up automatically by both Docker Compose and the K8s `media_up` helper.
 
 ## Service Configuration
 
