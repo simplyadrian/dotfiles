@@ -195,8 +195,6 @@ install_mac_base() {
       git \
       git-open \
       gnu-indent \
-      gnupg \
-      gnupg2 \
       grep \
       gzip \
       helm \
@@ -216,6 +214,15 @@ install_mac_base() {
       tree \
       unzip \
       vim
+
+    # gnupg/gnupg2 depend on gnutls → llvm which cannot compile on macOS 11 (Tier 3).
+    # On macOS 12+ bottles are available so install works fine.
+    if (( MACOS_MAJOR >= 12 )); then
+      brew install gnupg 2>/dev/null || echo "⚠️  gnupg install failed (non-critical)"
+    else
+      echo "⚠️  Skipping gnupg on macOS ${MACOS_MAJOR} (dependency gnutls→llvm cannot build from source)"
+      echo "   If you need GPG, install GPG Suite manually: https://gpgtools.org"
+    fi
 
     # gcc requires compilation from source on older macOS (no bottles)
     # and will fail on macOS 11 (Tier 3). Xcode CLT provides clang/cc which is sufficient.
