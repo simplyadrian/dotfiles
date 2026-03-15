@@ -251,10 +251,33 @@ install_mac_base() {
     else
       # macOS 11 (Big Sur) — Rancher Desktop requires macOS 12+
       # Fall back to Docker CLI + Colima
-      echo "Installing Docker CLI + Colima (Rancher Desktop requires macOS 12+)..."
+      # NOTE: docker, docker-compose, and colima all depend on 'go' via Homebrew,
+      # and go requires macOS 12+. So we can only use already-installed versions
+      # on Big Sur — attempting to install/upgrade will fail.
+      echo "Configuring Docker CLI + Colima (Rancher Desktop requires macOS 12+)..."
+      local -a colima_missing=()
       for pkg in docker docker-compose colima; do
-        brew install "$pkg" 2>/dev/null || echo "⚠️  ${pkg} install failed (non-critical)"
+        if brew list "$pkg" &>/dev/null; then
+          echo "  ✓ ${pkg} already installed (skipping upgrade — go requires macOS 12+)"
+        else
+          colima_missing+=("$pkg")
+        fi
       done
+
+      if [[ ${#colima_missing[@]} -gt 0 ]]; then
+        echo ""
+        echo "⚠️  The following packages are NOT installed and cannot be installed"
+        echo "   via Homebrew on macOS ${MACOS_MAJOR} (they depend on 'go' which requires macOS 12+):"
+        for pkg in "${colima_missing[@]}"; do
+          echo "   - ${pkg}"
+        done
+        echo ""
+        echo "   Install them manually:"
+        echo "   - Docker CLI:      https://docs.docker.com/engine/install/"
+        echo "   - Docker Compose:  https://docs.docker.com/compose/install/"
+        echo "   - Colima:          https://github.com/abiosoft/colima/releases"
+        echo ""
+      fi
     fi
 
     # Install iTerm2
