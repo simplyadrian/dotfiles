@@ -142,15 +142,14 @@ install_mac_base_min() {
   if pkgutil --pkg-info com.apple.pkg.CLTools_Executables >/dev/null 2>&1; then
     printf '%s\n' "CHECKING INSTALLATION"
     count=0
-    pkgutil --files com.apple.pkg.CLTools_Executables |
-      while IFS= read file; do
-        test -e "/${file}" &&
-          printf '%s\n' "/${file}…OK" ||
-          {
-            printf '%s\n' "/${file}…MISSING"
-            ((count++))
-          }
-      done
+    while IFS= read -r file; do
+      if test -e "/${file}"; then
+        printf '%s\n' "/${file}…OK"
+      else
+        printf '%s\n' "/${file}…MISSING"
+        ((count++))
+      fi
+    done < <(pkgutil --files com.apple.pkg.CLTools_Executables)
     if ((count > 0)); then
       printf '%s\n' "Command Line Tools are not installed properly"
       # Provide instructions to remove and the CommandLineTools directory
@@ -183,34 +182,38 @@ install_mac_base() {
       eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv 2>/dev/null)"
     fi
 
-    # Core packages — these work on all supported macOS versions (11+)
-    brew update && brew install \
-      bash-completion \
-      bash \
-      bc \
-      bzip2 \
-      curl \
-      findutils \
-      fortune \
-      git \
-      git-open \
-      gnu-indent \
-      grep \
-      gzip \
-      highlight \
-      icdiff \
-      jq \
-      less \
-      lsof \
-      make \
-      ngrep \
-      nmap \
-      openssl \
-      python@3 \
-      tmux \
-      tree \
-      unzip \
-      vim
+    brew update
+
+    # Core packages list
+    local -a core_packages=(
+      bash-completion bash bc bzip2 curl findutils fortune git git-open
+      gnu-indent grep gzip highlight icdiff jq less lsof make ngrep
+      nmap openssl python@3 tmux tree unzip vim
+    )
+
+    if (( MACOS_MAJOR >= 12 )); then
+      # macOS 12+: bottles available — batch install is safe
+      brew install "${core_packages[@]}" || echo "⚠️  Some core packages may have failed (check output above)"
+    else
+      # macOS 11 (Tier 3): no bottles for many formulae — install individually
+      # so one failure doesn't abort the rest
+      echo "Installing packages individually (macOS ${MACOS_MAJOR} / Homebrew Tier 3)..."
+      local -a failed_packages=()
+      for pkg in "${core_packages[@]}"; do
+        if brew install "$pkg" >/dev/null 2>&1; then
+          echo "  ✓ ${pkg}"
+        else
+          failed_packages+=("$pkg")
+          echo "  ✗ ${pkg} (skipped)"
+        fi
+      done
+      if [[ ${#failed_packages[@]} -gt 0 ]]; then
+        echo ""
+        echo "⚠️  The following packages failed to install: ${failed_packages[*]}"
+        echo "   This is expected on macOS 11 (Homebrew Tier 3) — not all bottles are available."
+        echo ""
+      fi
+    fi
 
     # ── macOS 12+ only packages ──────────────────────────────────────────
     # These packages depend on 'go' or other formulae that require macOS 12 (Monterey)+.
@@ -221,7 +224,9 @@ install_mac_base() {
       brew install gnupg 2>/dev/null  || echo "⚠️  gnupg install skipped (non-critical)"
 
       # Kubernetes tools (helm, kubectl, k9s depend on go which requires macOS 12+)
-      brew install helm kubectl k9s 2>/dev/null || echo "⚠️  k8s tools install had issues (non-critical)"
+      for tool in helm kubectl k9s; do
+        brew install "$tool" 2>/dev/null || echo "⚠️  ${tool} install skipped (non-critical)"
+      done
     else
       echo ""
       echo "⚠️  Skipping macOS 12+ packages on macOS ${MACOS_MAJOR} (Big Sur / Homebrew Tier 3):"
@@ -247,7 +252,9 @@ install_mac_base() {
       # macOS 11 (Big Sur) — Rancher Desktop requires macOS 12+
       # Fall back to Docker CLI + Colima
       echo "Installing Docker CLI + Colima (Rancher Desktop requires macOS 12+)..."
-      brew install docker docker-compose colima
+      for pkg in docker docker-compose colima; do
+        brew install "$pkg" 2>/dev/null || echo "⚠️  ${pkg} install failed (non-critical)"
+      done
     fi
 
     # Install iTerm2
@@ -263,8 +270,6 @@ install_mac_base() {
 
 # sets up apt sources for modern Ubuntu
 setup_sources() {
-  local codename
-  codename=$(lsb_release -cs)
 
   # turn off translations, speed up apt-get update
   mkdir -p /etc/apt/apt.conf.d
@@ -366,18 +371,20 @@ install_linux_base() {
 # install custom scripts/binaries
 install_scripts() {
   # install speedtest
-  curl -sSL https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py >/usr/local/bin/speedtest
-  chmod +x /usr/local/bin/speedtest
+  sudo curl -sSL https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py -o /usr/local/bin/speedtest
+  sudo chmod +x /usr/local/bin/speedtest
 
-  # install icdiff
-  curl -sSL https://raw.githubusercontent.com/jeffkaufman/icdiff/master/icdiff >/usr/local/bin/icdiff
-  curl -sSL https://raw.githubusercontent.com/jeffkaufman/icdiff/master/git-icdiff >/usr/local/bin/git-icdiff
-  chmod +x /usr/local/bin/icdiff
-  chmod +x /usr/local/bin/git-icdiff
+  # install icdiff (Linux only — macOS gets it via Homebrew)
+  if [[ $PLATFORM == 'Linux' ]]; then
+    sudo curl -sSL https://raw.githubusercontent.com/jeffkaufman/icdiff/master/icdiff -o /usr/local/bin/icdiff
+    sudo curl -sSL https://raw.githubusercontent.com/jeffkaufman/icdiff/master/git-icdiff -o /usr/local/bin/git-icdiff
+    sudo chmod +x /usr/local/bin/icdiff
+    sudo chmod +x /usr/local/bin/git-icdiff
+  fi
 
   # install lolcat
-  curl -sSL https://raw.githubusercontent.com/tehmaze/lolcat/master/lolcat >/usr/local/bin/lolcat
-  chmod +x /usr/local/bin/lolcat
+  sudo curl -sSL https://raw.githubusercontent.com/tehmaze/lolcat/master/lolcat -o /usr/local/bin/lolcat
+  sudo chmod +x /usr/local/bin/lolcat
 }
 
 # configure container runtime post-install

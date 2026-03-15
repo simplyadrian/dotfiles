@@ -154,7 +154,10 @@ except Exception as e:
 
   # kubectl dry-run if available
   if command -v kubectl &>/dev/null; then
-    if kubectl apply --dry-run=client -f "$k8s_dir/" >/dev/null 2>&1; then
+    # Check if kubectl can reach a cluster before validating manifests
+    if ! kubectl cluster-info --request-timeout=5s >/dev/null 2>&1; then
+      skip "kubectl installed but no reachable cluster (dry-run requires a running cluster)"
+    elif kubectl apply --dry-run=client -f "$k8s_dir/" >/dev/null 2>&1; then
       pass "kubectl dry-run — all manifests valid"
     else
       fail "kubectl dry-run — manifests have errors"

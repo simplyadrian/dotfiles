@@ -5,8 +5,8 @@
 #   chmod 600 ~/.ssh/config
 #
 # Generate keys:
-#   ssh-keygen -t ed25519 -C "work@email.com"     -f ~/.ssh/github_work
-#   ssh-keygen -t ed25519 -C "personal@email.com"  -f ~/.ssh/github_personal
+#   ssh-keygen -t ed25519 -C "work@email.com"     -f ~/.ssh/github
+#   ssh-keygen -t ed25519 -C "personal@email.com"  -f ~/.ssh/id_ed25519_personal
 #
 # Then add each public key to the corresponding GitHub account:
 #   https://github.com/settings/ssh/new
