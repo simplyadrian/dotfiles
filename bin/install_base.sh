@@ -280,6 +280,40 @@ install_mac_base() {
       fi
     fi
 
+    # On macOS 11 (Tier 3), pin packages that can't be upgraded:
+    #   - go requires macOS 12+ (blocks docker, colima, lima)
+    #   - gcc, llvm, gnupg, gnutls fail to compile from source (no bottles)
+    # Also pin any outdated package that depends on a pinned package,
+    # otherwise 'brew upgrade' will fail requiring the latest pinned dep.
+    if (( MACOS_MAJOR < 12 )); then
+      echo "Pinning packages that cannot upgrade on macOS ${MACOS_MAJOR} (Tier 3)..."
+      local -a root_pins=()
+      for pkg in go gcc llvm gnupg gnutls docker colima lima; do
+        if brew list "$pkg" &>/dev/null 2>&1; then
+          root_pins+=("$pkg")
+        fi
+      done
+      if [[ ${#root_pins[@]} -gt 0 ]]; then
+        brew pin "${root_pins[@]}" 2>/dev/null || true
+        echo "  Pinned (root): ${root_pins[*]}"
+      fi
+
+      # Cascade: pin outdated packages that depend on any pinned package
+      local -a cascade_pins=()
+      while IFS= read -r pkg; do
+        for pinned in "${root_pins[@]}"; do
+          if brew deps --include-build "$pkg" 2>/dev/null | grep -q "^${pinned}$"; then
+            cascade_pins+=("$pkg")
+            break
+          fi
+        done
+      done < <(brew outdated --formula 2>/dev/null)
+      if [[ ${#cascade_pins[@]} -gt 0 ]]; then
+        brew pin "${cascade_pins[@]}" 2>/dev/null || true
+        echo "  Pinned (deps): ${cascade_pins[*]}"
+      fi
+    fi
+
     # Install iTerm2
     if brew list --cask iterm2 &>/dev/null || [[ -d "/Applications/iTerm.app" ]]; then
       echo "iTerm2 already installed, upgrading..."
