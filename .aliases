@@ -88,12 +88,22 @@ alias pubip="dig +short myip.opendns.com @resolver1.opendns.com"
 alias localip="sudo ifconfig | grep -Eo 'inet (addr:)?([0-9]*\\.){3}[0-9]*' | grep -Eo '([0-9]*\\.){3}[0-9]*' | grep -v '127.0.0.1'"
 alias ips="sudo ifconfig -a | grep -o 'inet6\\? \\(addr:\\)\\?\\s\\?\\(\\(\\([0-9]\\+\\.\\)\\{3\\}[0-9]\\+\\)\\|[a-fA-F0-9:]\\+\\)' | awk '{ sub(/inet6? (addr:)? ?/, \"\"); print }'"
 
-# Flush Directory Service cache
-alias flush="dscacheutil -flushcache && killall -HUP mDNSResponder"
+# Flush Directory Service cache (macOS only)
+if [[ "$(uname)" == "Darwin" ]]; then
+  alias flush="dscacheutil -flushcache && killall -HUP mDNSResponder"
+fi
 
 # View HTTP traffic
-alias sniff="sudo ngrep -d 'en1' -t '^(GET|POST) ' 'tcp and port 80'"
-alias httpdump="sudo tcpdump -i en1 -n -s 0 -w - | grep -a -o -E \"Host\\: .*|GET \\/.*\""
+# Note: Uses default route interface - override with NETIF env var
+_get_default_iface() {
+  if [[ "$_OS" == "Darwin" ]]; then
+    route -n get default 2>/dev/null | awk '/interface:/ {print $2}' | head -1
+  else
+    ip route | awk '/default/ {print $5}' | head -1
+  fi
+}
+alias sniff='sudo ngrep -d "${NETIF:-$(_get_default_iface)}" -t "^(GET|POST) " "tcp and port 80"'
+alias httpdump='sudo tcpdump -i "${NETIF:-$(_get_default_iface)}" -n -s 0 -w - | grep -a -o -E "Host\\: .*|GET \\/.*"'
 
 # Canonical hex dump; some systems have this symlinked
 command -v hd >/dev/null || alias hd="hexdump -C"
@@ -105,11 +115,13 @@ command -v md5sum >/dev/null || alias md5sum="md5"
 command -v sha1sum >/dev/null || alias sha1sum="shasum"
 
 # URL-encode strings
-alias urlencode='python -c "import sys, urllib as ul; print ul.quote_plus(sys.argv[1]);"'
+alias urlencode='python3 -c "import sys, urllib.parse; print(urllib.parse.quote_plus(sys.argv[1]));"'
 
-# Merge PDF files
+# Merge PDF files (macOS only)
 # Usage: `mergepdf -o output.pdf input{1,2,3}.pdf`
-alias mergepdf='/System/Library/Automator/Combine\ PDF\ Pages.action/Contents/Resources/join.py'
+if [[ "$(uname)" == "Darwin" ]]; then
+  alias mergepdf='/System/Library/Automator/Combine\ PDF\ Pages.action/Contents/Resources/join.py'
+fi
 
 # Intuitive map function
 # For example, to list all directories that contain a certain file:
@@ -123,11 +135,14 @@ for method in GET HEAD POST PUT DELETE TRACE OPTIONS; do
 done
 
 # Kill all the tabs in Chrome to free up memory
-# [C] explained: http://www.commandlinefu.com/commands/view/402/exclude-grep-from-your-grepped-output-of-ps-alias-included-in-description
-alias chromekill="ps ux | grep '[C]hrome Helper --type=renderer' | grep -v extension-process | tr -s ' ' | cut -d ' ' -f2 | xargs kill"
+alias chromekill="ps ux | grep '[C]hrome Helper (Renderer)' | tr -s ' ' | cut -d ' ' -f2 | xargs kill"
 
 # Lock the screen (when going AFK)
-alias afk="pmset sleepnow"
+if [[ "$(uname)" == "Darwin" ]]; then
+  alias afk="pmset sleepnow"
+elif command -v xdg-screensaver &>/dev/null; then
+  alias afk="xdg-screensaver lock"
+fi
 
 # vhosts
 alias hosts='sudo vim /etc/hosts'
@@ -145,10 +160,35 @@ alias mv='mv -i'
 alias untar='tar xvf'
 
 # Pipe my public key to my clipboard.
-alias pubkey="more ~/.ssh/id_ed25519.pub | pbcopy | echo '=> Public key copied to pasteboard.'"
+alias pubkey="cat ~/.ssh/id_ed25519.pub | pbcopy && echo '=> Public key copied to pasteboard.'"
 
 # Pipe my private key to my clipboard.
 alias prikey="more ~/.ssh/id_ed25519 | pbcopy | echo '=> Private key copied to pasteboard.'"
 
 # Home Alias
 alias home="ssh aherrera@192.168.86.89"
+
+# Kubernetes / kubectl aliases
+if command -v kubectl &>/dev/null; then
+  alias k="kubectl"
+  alias kgp="kubectl get pods -A"  # All namespaces by default
+  alias kgs="kubectl get svc -A"
+  alias kgn="kubectl get nodes"
+  alias kgd="kubectl get deployments -A"
+  alias kga="kubectl get all -A"
+  alias kaf="kubectl apply -f"
+  alias kdf="kubectl delete -f"
+  alias kdp="kubectl describe pod"
+  alias kds="kubectl describe svc"
+  alias kl="kubectl logs"
+  alias klf="kubectl logs -f"
+  alias kctx="kubectl config get-contexts"
+  alias kns="kubectl config set-context --current --namespace"
+fi
+
+# Helm aliases
+if command -v helm &>/dev/null; then
+  alias hls="helm list"
+  alias hla="helm list -A"
+fi
+

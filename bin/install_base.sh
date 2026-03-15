@@ -3,7 +3,8 @@ set -e
 set -o pipefail
 
 # install.sh
-#	This script installs my basic setup for a debian laptop
+#	This script installs my basic setup for a macOS or Ubuntu workstation.
+#	Uses Rancher Desktop for container runtime (docker CLI) + Kubernetes.
 
 PLATFORM=$(uname)
 export DEBIAN_FRONTEND=noninteractive
@@ -33,13 +34,15 @@ doit() {
   if [[ $PLATFORM == 'Darwin' ]]; then
     install_mac_base
     install_scripts
+    configure_rancher_desktop
   elif [[ $PLATFORM == 'Linux' ]]; then
     export DEBIAN_FRONTEND=noninteractive
     get_user
     setup_sources
     install_linux_base
     install_scripts
-    echo "run installer with configure_vim option without sudo to complete the setup"
+    configure_rancher_desktop
+    echo "run installer with install_vim option without sudo to complete the setup"
   fi
 }
 
@@ -125,16 +128,19 @@ install_mac_base_min() {
 install_mac_base() {
   install_mac_base_min
   (
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    # Install Homebrew if not present
+    if ! command -v brew &>/dev/null; then
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv 2>/dev/null)"
+    fi
+
     brew update && brew install \
       bash-completion \
       bash \
       bc \
       bzip2 \
       cmake \
-	  colima \
       curl \
-	  docker \
       findutils \
       fortune \
       gcc \
@@ -145,59 +151,57 @@ install_mac_base() {
       gnupg2 \
       grep \
       gzip \
+      helm \
       highlight \
       icdiff \
       jq \
+      k9s \
+      kubectl \
       less \
       lsof \
       make \
       ngrep \
       nmap \
       openssl \
-      python \
+      python@3 \
       tmux \
       tree \
       unzip \
-	  vim
-    brew tap homebrew/cask-versions
-	brew install --cask iterm2
+      vim
+
+    # Install Rancher Desktop (provides docker CLI + Kubernetes)
+    brew install --cask rancher
+    brew install --cask iterm2
     echo "Completed installing base packages via homebrew"
   )
 }
 
-# sets up apt sources
+# sets up apt sources for modern Ubuntu
 setup_sources() {
-  cat <<-EOF >/etc/apt/sources.list
-  deb-src http://archive.ubuntu.com/ubuntu focal main restricted
-  deb http://us.archive.ubuntu.com/ubuntu/ focal main restricted
-  deb-src http://us.archive.ubuntu.com/ubuntu/ focal universe main restricted multiverse
-  deb http://us.archive.ubuntu.com/ubuntu/ focal-updates main restricted
-  deb-src http://us.archive.ubuntu.com/ubuntu/ focal-updates universe main restricted multiverse
-  deb http://us.archive.ubuntu.com/ubuntu/ focal universe
-  deb http://us.archive.ubuntu.com/ubuntu/ focal-updates universe
-  deb http://us.archive.ubuntu.com/ubuntu/ focal multiverse
-  deb http://us.archive.ubuntu.com/ubuntu/ focal-updates multiverse
-  deb http://us.archive.ubuntu.com/ubuntu/ focal-backports main restricted universe multiverse
-  deb-src http://us.archive.ubuntu.com/ubuntu/ focal-backports main restricted universe multiverse
-  deb http://archive.canonical.com/ubuntu focal partner
-  deb-src http://archive.canonical.com/ubuntu focal partner
-  deb http://security.ubuntu.com/ubuntu focal-security main restricted
-  deb-src http://security.ubuntu.com/ubuntu focal-security universe main restricted multiverse
-  deb http://security.ubuntu.com/ubuntu focal-security universe
-  deb http://security.ubuntu.com/ubuntu focal-security multiverse
-	EOF
-
-  # add docker gpg key
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-
-  # add docker repository
-  sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
-
-  apt-cache policy docker-ce
+  local codename
+  codename=$(lsb_release -cs)
 
   # turn off translations, speed up apt-get update
   mkdir -p /etc/apt/apt.conf.d
   echo 'Acquire::Languages "none";' >/etc/apt/apt.conf.d/99translations
+
+  # Add Rancher Desktop repository
+  curl -fsSL https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/Release.key \
+    | gpg --dearmor | sudo tee /usr/share/keyrings/isv-rancher-stable-archive-keyring.gpg >/dev/null
+  echo "deb [signed-by=/usr/share/keyrings/isv-rancher-stable-archive-keyring.gpg] https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/ ./" \
+    | sudo tee /etc/apt/sources.list.d/isv-rancher-stable.list
+
+  # Add kubectl repository
+  curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key \
+    | gpg --dearmor | sudo tee /usr/share/keyrings/kubernetes-apt-keyring.gpg >/dev/null
+  echo "deb [signed-by=/usr/share/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /" \
+    | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+  # Add helm repository
+  curl -fsSL https://baltocdn.com/helm/signing.asc \
+    | gpg --dearmor | sudo tee /usr/share/keyrings/helm-archive-keyring.gpg >/dev/null
+  echo "deb [signed-by=/usr/share/keyrings/helm-archive-keyring.gpg] https://baltocdn.com/helm/stable/debian/ all main" \
+    | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
 }
 
 # installs base packages
@@ -226,10 +230,12 @@ install_linux_base() {
     gnupg2 \
     grep \
     gzip \
+    helm \
     hostname \
     indent \
     iptables \
     jq \
+    kubectl \
     less \
     libc6-dev \
     locales \
@@ -239,7 +245,6 @@ install_linux_base() {
     mount \
     net-tools \
     policykit-1 \
-    rxvt \
     silversearcher-ag \
     ssh \
     strace \
@@ -255,13 +260,16 @@ install_linux_base() {
     software-properties-common \
     --no-install-recommends
 
+  # Install Rancher Desktop (provides docker CLI + Kubernetes)
+  apt-get install -y rancher-desktop --no-install-recommends || {
+    echo "WARNING: rancher-desktop package not found. Install manually from https://rancherdesktop.io"
+  }
+
   setup_sudo
 
-  apt-get autoremove
+  apt-get autoremove -y
   apt-get autoclean
   apt-get clean
-
-  snap install docker
 }
 
 # install custom scripts/binaries
@@ -279,37 +287,57 @@ install_scripts() {
   # install lolcat
   curl -sSL https://raw.githubusercontent.com/tehmaze/lolcat/master/lolcat >/usr/local/bin/lolcat
   chmod +x /usr/local/bin/lolcat
+}
 
-  local scripts=(have light)
+# configure Rancher Desktop post-install
+configure_rancher_desktop() {
+  echo "-----------------------------------------------"
+  echo " Rancher Desktop Post-Install Configuration"
+  echo "-----------------------------------------------"
+  echo ""
+  echo "Rancher Desktop has been installed. Please complete the following steps:"
+  echo ""
+  echo "1. Launch Rancher Desktop from your Applications menu."
+  echo "2. On first launch, select the following settings:"
+  echo "   - Container Engine: dockerd (moby) — this enables the 'docker' CLI"
+  echo "   - Enable Kubernetes (select your desired version)"
+  echo ""
+  echo "Rancher Desktop places CLI tools (docker, kubectl, helm, nerdctl) in ~/.rd/bin"
+  echo "This path has been added to your shell PATH via .path"
+  echo ""
 
-  for script in "${scripts[@]}"; do
-    curl -sSL "https://misc.j3ss.co/binaries/$script" >"/usr/local/bin/${script}"
-    chmod +x "/usr/local/bin/${script}"
-  done
+  # Ensure ~/.rd/bin exists for path setup
+  mkdir -p "${HOME}/.rd/bin" 2>/dev/null || true
+
+  if [[ $PLATFORM == 'Darwin' ]]; then
+    echo "On macOS, Rancher Desktop also creates symlinks in /usr/local/bin."
+    echo "If you previously had Docker Desktop or Colima, you may want to:"
+    echo "  brew uninstall --cask docker 2>/dev/null"
+    echo "  brew uninstall colima 2>/dev/null"
+    echo "  brew uninstall docker 2>/dev/null"
+  elif [[ $PLATFORM == 'Linux' ]]; then
+    echo "On Linux, ensure your user is in the 'docker' group if socket access is needed:"
+    echo "  sudo groupadd docker 2>/dev/null; sudo usermod -aG docker \$USER"
+  fi
+  echo ""
+  echo "After launching Rancher Desktop and selecting dockerd (moby):"
+  echo "  docker ps          # container management"
+  echo "  kubectl get nodes  # kubernetes cluster"
+  echo "  helm version       # helm charts"
+  echo "-----------------------------------------------"
 }
 
 install_vim() {
   if [[ $PLATFORM == 'Linux' ]]; then
-	  # Install node, needed for coc.vim
-	  curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | sudo apt-key add -
+	  # Install Node.js (needed for coc.vim)
+	  # Using NodeSource Node.js 20.x LTS with modern signed-by approach
+	  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+	    | gpg --dearmor | sudo tee /usr/share/keyrings/nodesource.gpg >/dev/null
+	  echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
+	    | sudo tee /etc/apt/sources.list.d/nodesource.list
 
-	  # FROM: https://github.com/nodesource/distributions/blob/master/README.md
-	  # Replace with the branch of Node.js or io.js you want to install: node_6.x,
-	  # node_8.x, etc...
-	  VERSION=node_14.x
-	  # The below command will set this correctly, but if lsb_release isn't available, you can set it manually:
-	  # - For Debian distributions: jessie, sid, etc...
-	  # - For Ubuntu distributions: xenial, bionic, etc...
-	  # - For Debian or Ubuntu derived distributions your best option is to use
-	  # the codename corresponding to the upstream release your distribution is
-	  # based off. This is an advanced scenario and unsupported if your
-	  # distribution is not listed as supported per earlier in this README.
-	  DISTRO="$(lsb_release -s -c)"
-	  echo "deb https://deb.nodesource.com/$VERSION $DISTRO main" | sudo tee /etc/apt/sources.list.d/nodesource.list
-	  echo "deb-src https://deb.nodesource.com/$VERSION $DISTRO main" | sudo tee -a /etc/apt/sources.list.d/nodesource.list
-
-	  sudo apt update || true
-	  sudo apt install -y \
+	  sudo apt-get update || true
+	  sudo apt-get install -y \
 		nodejs \
 		--no-install-recommends
 
@@ -319,7 +347,7 @@ install_vim() {
 
 		# install .vim files
 		sudo rm -rf "${HOME}/.vim"
-		git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
+		git clone --recursive git@github.com-personal:simplyadrian/.vim.git "${HOME}/.vim"
 		(
 		  cd "${HOME}/.vim"
 		  make install
@@ -337,7 +365,7 @@ install_vim() {
 
       # install .vim files
       sudo rm -rf "${HOME}/.vim"
-      git clone --recursive git@github.com:simplyadrian/.vim.git "${HOME}/.vim"
+      git clone --recursive git@github.com-personal:simplyadrian/.vim.git "${HOME}/.vim"
       (
         cd "${HOME}/.vim"
         make install
@@ -347,10 +375,10 @@ install_vim() {
 }
 
 usage() {
-  echo -e "install_base.sh\n\tThis script installs my basic packages for a Mac laptop\n"
+  echo -e "install_base.sh\n\tThis script installs my basic packages for a macOS or Ubuntu workstation\n"
   echo "Usage:"
-  echo "doit			- install the base packages based on OS detection. including docker and custom scripts and neovim configuration"
-  echo "install_vim		- install vim."
+  echo "  doit                - install base packages, Rancher Desktop, and custom scripts"
+  echo "  install_vim         - install vim configuration"
 }
 
 main() {

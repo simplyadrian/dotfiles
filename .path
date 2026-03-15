@@ -1,4 +1,15 @@
 #!/bin/sh
 
 # update path
-export PATH=/usr/local/sbin:/usr/local/bin:/usr/local/go/bin:${PATH}:${GOPATH}/bin:/usr/share/bcc/tools:/sbin
+
+# Rancher Desktop CLI tools (docker, kubectl, helm, nerdctl)
+if [ -d "${HOME}/.rd/bin" ]; then
+  export PATH="${HOME}/.rd/bin:${PATH}"
+fi
+
+# Homebrew on Apple Silicon
+if [ -d "/opt/homebrew/bin" ]; then
+  export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:${PATH}"
+fi
+
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/local/go/bin:${PATH}${GOPATH:+:${GOPATH}/bin}:/sbin

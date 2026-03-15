@@ -78,7 +78,7 @@
 
 	# from seth vargo https://gist.github.com/sethvargo/6b2f7b592853381690bfe3bd00947e8f
 	unreleased = "!f() { git fetch --tags && git diff $(git tag | tail -n 1); }; f"
-	up = !git pull origin master && git remote prune origin && git submodule update --init --recursive
+	up = "!f() { local b=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'); git pull origin ${b:-main} && git remote prune origin && git submodule update --init --recursive; }; f"
 	undo = !git reset HEAD~1 --mixed
 	top = !git log --format=format:%an | sort | uniq -c | sort -r | head -n 20
 
@@ -157,15 +157,11 @@
 	# change to maching for machines with older versions of git 1.x.x
 	default = simple
 
-[url "git@github.com:"]
-
-	pushInsteadOf = https://github.com/
-	pushInsteadOf = "github:"
-	pushInsteadOf = "git://github.com/"
-
-[url "git://github.com/"]
-
-	insteadOf = "github:"
+# NOTE: Global url insteadOf rules removed — they conflict with multi-account
+# SSH (work vs personal GitHub). Each repo should use the correct remote URL:
+#   Work:     git@github.com:<org>/<repo>.git
+#   Personal: git@github.com-personal:<user>/<repo>.git
+# Use 'git-clone-personal' helper for personal repos.
 
 [url "git@gist.github.com:"]
 
@@ -200,10 +196,10 @@
 	smtpServerPort = 587
 
 [credential]
-	helper = store --file ~/.git-credentials
-	helper = cache --timeout 30000
-[url "ssh://git@github.com/"]
-	insteadOf = https://github.com/
+	# macOS: uses Keychain; Linux: caches in memory for 8 hours
+	# (osxkeychain helper is built into macOS git, ignored on Linux)
+	helper = osxkeychain
+	helper = cache --timeout 28800
 [filter "lfs"]
 	required = true
 	clean = git-lfs clean -- %f

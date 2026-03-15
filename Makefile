@@ -1,4 +1,4 @@
-.PHONY: all base bin dotfiles etc test shellcheck
+.PHONY: all base bin dotfiles etc test test-quick test-yaml test-secrets shellcheck
 
 PLATFORM := $(shell uname)
 
@@ -10,7 +10,7 @@ base:
 
 bin:
 	# add aliases for things in bin
-	for file in $(shell find $(CURDIR)/bin -type f -not -name "install-base.sh" -not -name ".*.swp"); do \
+	for file in $(shell find $(CURDIR)/bin -type f -not -name "install_base.sh" -not -name ".*.swp"); do \
 		f=$$(basename $$file); \
 		sudo ln -sf $$file /usr/local/bin/$$f; \
 	done
@@ -39,6 +39,18 @@ endif
 
 test: shellcheck
 
+test-quick:
+	# Fast tests: syntax + secrets + permissions (no shellcheck)
+	./test.sh quick
+
+test-yaml:
+	# Validate k8s manifests
+	./test.sh yaml
+
+test-secrets:
+	# Scan for leaked credentials
+	./test.sh secrets
+
 # if this session isn't interactive, then we don't want to allocate a
 # TTY, which would fail, but if it is interactive, we do want to attach
 # so that the user can send e.g. ^C through.
@@ -48,8 +60,15 @@ ifeq ($(INTERACTIVE), 1)
 endif
 
 shellcheck:
-	docker run --rm -i $(DOCKER_FLAGS) \
-		--name df-shellcheck \
-		-v $(CURDIR):/usr/src:ro \
-		--workdir /usr/src \
-		r.j3ss.co/shellcheck ./test.sh
+	# Use local shellcheck if available, otherwise use docker (via Rancher Desktop)
+	@if command -v shellcheck >/dev/null 2>&1; then \
+		echo "Running shellcheck locally..."; \
+		./test.sh; \
+	else \
+		echo "Running shellcheck via docker (Rancher Desktop)..."; \
+		docker run --rm -i $(DOCKER_FLAGS) \
+			--name df-shellcheck \
+			-v $(CURDIR):/usr/src:ro \
+			--workdir /usr/src \
+			koalaman/shellcheck-alpine ./test.sh; \
+	fi

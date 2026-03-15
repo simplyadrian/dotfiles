@@ -98,22 +98,11 @@ dataurl() {
   echo "data:${mimeType};base64,$(openssl base64 -in "$1" | tr -d '\n')"
 }
 
-# Create a git.io short URL
-gitio() {
-  if [ -z "${1}" ] || [ -z "${2}" ]; then
-    echo "Usage: \`gitio slug url\`"
-    return 1
-  fi
-  curl -i https://git.io/ -F "url=${2}" -F "code=${1}"
-}
-
 # Start an HTTP server from a directory, optionally specifying the port
 server() {
   local port="${1:-8000}"
   sleep 1 && open "http://localhost:${port}/" &
-  # Set the default Content-Type to `text/plain` instead of `application/octet-stream`
-  # And serve everything as UTF-8 (although not technically correct, this doesn’t break anything for binary files)
-  python -c $'import SimpleHTTPServer;\nmap = SimpleHTTPServer.SimpleHTTPRequestHandler.extensions_map;\nmap[""] = "text/plain";\nfor key, value in map.items():\n\tmap[key] = value + ";charset=UTF-8";\nSimpleHTTPServer.test();' "$port"
+  python3 -m http.server "$port"
 }
 
 # Compare original and gzipped file size
@@ -132,9 +121,9 @@ gz() {
 # Usage: `json '{"foo":42}'` or `echo '{"foo":42}' | json`
 json() {
   if [ -t 0 ]; then # argument
-    python -mjson.tool <<<"$*" | pygmentize -l javascript
+    python3 -mjson.tool <<<"$*" | pygmentize -l javascript
   else # pipe
-    python -mjson.tool | pygmentize -l javascript
+    python3 -mjson.tool | pygmentize -l javascript
   fi
 }
 
@@ -264,7 +253,7 @@ repo() {
   # Validate that this folder is a git folder
   if ! git branch 2>/dev/null 1>&2; then
     echo "Not a git repo!"
-    exit $?
+    return 1
   fi
 
   # Find current directory relative to .git parent
@@ -334,9 +323,9 @@ isup() {
   local uri=$1
 
   if curl -s --head --request GET "$uri" | grep "200 OK" >/dev/null; then
-    notify-send --urgency=critical "$uri is down"
+    echo "$uri is up"
   else
-    notify-send --urgency=low "$uri is up"
+    echo "$uri is down"
   fi
 }
 
@@ -383,65 +372,32 @@ gostatic() {
   )
 }
 
-# go to a folder easily in your gopath
-gogo() {
-  local d=$1
-
-  if [[ -z $d ]]; then
-    echo "You need to specify a project name."
-    return 1
-  fi
-
-  if [[ "$d" == github* ]]; then
-    d=$(echo "$d" | sed 's/.*\///')
-  fi
-  d=${d%/}
-
-  # search for the project dir in the GOPATH
-  local path=($(find "${GOPATH}/src" \( -type d -o -type l \) -iname "$d" | awk '{print length, $0;}' | sort -n | awk '{print $2}'))
-
-  if [ "${path[0]}" == "" ] || [ "${path[*]}" == "" ]; then
-    echo "Could not find a directory named $d in $GOPATH"
-    echo "Maybe you need to 'go get' it ;)"
-    return 1
-  fi
-
-  # enter the first path found
-  cd "${path[0]}" || return 1
-}
-
-golistdeps() {
-  (
-    if [[ ! -z "$1" ]]; then
-      gogo "$@"
-    fi
-
-    go list -e -f '{{join .Deps "\n"}}' ./... | xargs go list -e -f '{{if not .Standard}}{{.ImportPath}}{{end}}'
-  )
-}
-
 # ssh-agent function to load ssh key
-SSH_ENV="$HOME/.ssh/environment"
+# On macOS, the system ssh-agent with Keychain integration is preferred.
+# This block is mainly useful on Linux.
+if [[ "$(uname)" == "Linux" ]]; then
+  SSH_ENV="$HOME/.ssh/environment"
 
-function start_agent {
-  echo "Initialising new SSH agent..."
-  /usr/bin/ssh-agent | sed 's/^echo/#echo/' >"${SSH_ENV}"
-  echo succeeded
-  chmod 600 "${SSH_ENV}"
-  . "${SSH_ENV}" >/dev/null
-  /usr/bin/ssh-add
-}
-
-# Source SSH settings, if applicable
-
-if [ -f "${SSH_ENV}" ]; then
-  . "${SSH_ENV}" >/dev/null
-  #ps ${SSH_AGENT_PID} doesn't work under cywgin
-  ps -ef | grep ${SSH_AGENT_PID} | grep ssh-agent$ >/dev/null || {
-    start_agent
+  start_agent() {
+    echo "Initialising new SSH agent..."
+    ssh-agent | sed 's/^echo/#echo/' >"${SSH_ENV}"
+    echo succeeded
+    chmod 600 "${SSH_ENV}"
+    # shellcheck source=/dev/null
+    . "${SSH_ENV}" >/dev/null
+    ssh-add
   }
-else
-  start_agent
+
+  # Source SSH settings, if applicable
+  if [ -f "${SSH_ENV}" ]; then
+    # shellcheck source=/dev/null
+    . "${SSH_ENV}" >/dev/null
+    ps -ef | grep "${SSH_AGENT_PID}" | grep ssh-agent$ >/dev/null || {
+      start_agent
+    }
+  else
+    start_agent
+  fi
 fi
 
 light() {
@@ -452,3 +408,79 @@ light() {
   fi
   $src | highlight -O rtf --syntax $1 --font Inconsolata --style solarized-dark --font-size 24 | pbcopy
 }
+
+# ─── Multi-Account GitHub Helpers ─────────────────────────────────────────
+# Clone a repo using the personal GitHub account (simplyadrian)
+# Usage: ghclone-personal simplyadrian/dotfiles
+#    or: ghclone-personal https://github.com/simplyadrian/dotfiles
+ghclone-personal() {
+  local repo="$1"
+  if [[ -z "$repo" ]]; then
+    echo "Usage: ghclone-personal <owner/repo>"
+    return 1
+  fi
+  # Strip URL prefix if full URL was passed
+  repo="${repo#https://github.com/}"
+  repo="${repo#git@github.com:}"
+  repo="${repo%.git}"
+  git clone "git@github.com-personal:${repo}.git"
+}
+
+# Clone a repo using the work GitHub account
+# Usage: ghclone owner/repo
+ghclone() {
+  local repo="$1"
+  if [[ -z "$repo" ]]; then
+    echo "Usage: ghclone <owner/repo>"
+    return 1
+  fi
+  repo="${repo#https://github.com/}"
+  repo="${repo#git@github.com:}"
+  repo="${repo%.git}"
+  git clone "git@github.com:${repo}.git"
+}
+
+# Show which GitHub account a repo is using
+# Run from inside a git repo
+ghwhoami() {
+  local remote
+  remote=$(git remote get-url origin 2>/dev/null)
+  if [[ -z "$remote" ]]; then
+    echo "Not a git repo or no origin remote"
+    return 1
+  fi
+
+  if [[ "$remote" == *"github.com-personal"* ]]; then
+    echo "Personal (simplyadrian) — ${remote}"
+  elif [[ "$remote" == *"github.com"* ]]; then
+    echo "Work (adrianherrera78-rldatix) — ${remote}"
+  elif [[ "$remote" == *"bitbucket"* ]]; then
+    echo "Bitbucket (adrian_herrera) — ${remote}"
+  else
+    echo "Unknown — ${remote}"
+  fi
+}
+
+# Switch a repo's remote between work and personal GitHub accounts
+ghswitch() {
+  local remote
+  remote=$(git remote get-url origin 2>/dev/null)
+  if [[ -z "$remote" ]]; then
+    echo "Not a git repo or no origin remote"
+    return 1
+  fi
+
+  if [[ "$remote" == *"github.com-personal:"* ]]; then
+    local new_remote="${remote/github.com-personal:/github.com:}"
+    git remote set-url origin "$new_remote"
+    echo "Switched to WORK: ${new_remote}"
+  elif [[ "$remote" == *"github.com:"* ]]; then
+    local new_remote="${remote/github.com:/github.com-personal:}"
+    git remote set-url origin "$new_remote"
+    echo "Switched to PERSONAL: ${new_remote}"
+  else
+    echo "Not a GitHub remote: ${remote}"
+    return 1
+  fi
+}
+

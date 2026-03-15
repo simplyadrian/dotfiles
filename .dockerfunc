@@ -1,5 +1,12 @@
 #!/bin/bash
 # Bash wrappers for docker run commands
+# Works with Docker CLI provided by Rancher Desktop (dockerd/moby engine)
+# Ensure Rancher Desktop is running with the "dockerd (moby)" container engine
+
+# Bail out early if docker is not available
+if ! command -v docker &>/dev/null; then
+  return 0 2>/dev/null || exit 0
+fi
 
 export DOCKER_REPO_PREFIX=jess
 
@@ -8,14 +15,22 @@ export DOCKER_REPO_PREFIX=jess
 #
 dcleanup() {
   local containers
-  containers=($(docker ps -aq 2>/dev/null))
-  docker rm "${containers[@]}" 2>/dev/null
+  mapfile -t containers < <(docker ps -aq 2>/dev/null)
+  if [ ${#containers[@]} -gt 0 ]; then
+    docker rm "${containers[@]}" 2>/dev/null || true
+  fi
+
   local volumes
-  volumes=($(docker ps --filter status=exited -q 2>/dev/null))
-  docker rm -v "${volumes[@]}" 2>/dev/null
+  mapfile -t volumes < <(docker ps --filter status=exited -q 2>/dev/null)
+  if [ ${#volumes[@]} -gt 0 ]; then
+    docker rm -v "${volumes[@]}" 2>/dev/null || true
+  fi
+
   local images
-  images=($(docker images --filter dangling=true -q 2>/dev/null))
-  docker rmi "${images[@]}" 2>/dev/null
+  mapfile -t images < <(docker images --filter dangling=true -q 2>/dev/null)
+  if [ ${#images[@]} -gt 0 ]; then
+    docker rmi "${images[@]}" 2>/dev/null || true
+  fi
 }
 del_stopped() {
   local name=$1
@@ -39,16 +54,61 @@ relies_on() {
 }
 
 #
-# Container Aliases
+# Media Stack (Kubernetes via Rancher Desktop)
 #
-#aws(){
-#	docker run -it --rm \
-#		-v "${HOME}:/root" \
-#		--log-driver none \
-#		--name aws \
-#	${DOCKER_REPO_PREFIX}/awscli "$@"
-#}
+# The full media stack (plex, sonarr, radarr, transmission, prowlarr, bazarr,
+# overseerr, flaresolverr) is managed via Kubernetes manifests.
+# Paths are templated — set CONFIG_PATH, DOWNLOADS_PATH, MEDIA_PATH,
+# PLEX_CONFIG_PATH, PLEX_TRANSCODE_PATH in ~/.extra
+# See: ~/dotfiles/media/k8s/
+#
+media_up() {
+  local media_dir="${HOME}/dotfiles/media/k8s"
+  if [[ ! -d "${media_dir}" ]]; then
+    echo "Media stack not found at ${media_dir}"
+    return 1
+  fi
 
+  # Verify required env vars are set (from ~/.extra)
+  local -a required_vars=(CONFIG_PATH DOWNLOADS_PATH MEDIA_PATH PLEX_CONFIG_PATH PLEX_TRANSCODE_PATH)
+  local missing=0
+  for var in "${required_vars[@]}"; do
+    if [[ -z "${!var}" ]]; then
+      echo "ERROR: \$${var} is not set. Add it to ~/.extra"
+      missing=1
+    fi
+  done
+  if [[ $missing -eq 1 ]]; then
+    return 1
+  fi
+
+  # Substitute env vars in manifests and apply
+  local vars='${CONFIG_PATH} ${DOWNLOADS_PATH} ${MEDIA_PATH} ${PLEX_CONFIG_PATH} ${PLEX_TRANSCODE_PATH}'
+  for f in "${media_dir}"/*.yaml; do
+    envsubst "$vars" < "$f" | kubectl apply -f -
+  done
+  echo "Media stack deployed. Run 'media_ps' to check status."
+}
+media_down() {
+  kubectl delete namespace media
+}
+media_ps() {
+  kubectl get pods -n media
+}
+media_logs() {
+  if [[ -z "$1" ]]; then
+    echo "Usage: media_logs <service> (e.g. media_logs plex)"
+    return 1
+  fi
+  kubectl logs -n media -l "app=$1" -f
+}
+media_svc() {
+  kubectl get svc -n media
+}
+
+#
+# Standalone Container Aliases
+#
 gitsome() {
   docker run --rm -it \
     -v /etc/localtime:/etc/localtime:ro \
@@ -75,24 +135,6 @@ netcat() {
     --net host \
     ${DOCKER_REPO_PREFIX}/netcat "$@"
 }
-nmap() {
-  docker run --rm -it \
-    --net host \
-    ${DOCKER_REPO_PREFIX}/nmap "$@"
-}
-plex(){
-	docker run \
-    --disable-content-trust \
-	-d \
-	--name plex \
-	--network=host \
-	-e TZ="American/Chicago" \
-	-e PLEX_CLAIM="claim-bnJbCxNLWbMGUVzpiA4P" \
-	-v /mnt/plexmediaserver:/config \
-	-v /tmp:/transcode \
-	-v /mnt:/data \
-	plexinc/pms-docker
-}
 s3cmdocker() {
   del_stopped s3cmd
 
@@ -102,22 +144,6 @@ s3cmdocker() {
     -v "$(pwd):/root/s3cmd-workspace" \
     --name s3cmd \
     ${DOCKER_REPO_PREFIX}/s3cmd "$@"
-}
-sonarr() {
-  del_stopped sonarr
-
-	docker run \
-    --disable-content-trust \
-    -d \
-    -v /etc/localtime:/etc/localtime:ro \
-    -v "${HOME}/Torrents:/downloads" \
-    -v "/mnt/tvshows:/tv" \
-    -v "${HOME}/.sonarr:/config" \
-    -e PUID=1000 \
-    -e PGID=1000 \
-    -p 8989:8989 \
-    --name sonarr \
-    linuxserver/sonarr
 }
 telnet() {
   docker run -it --rm \
@@ -129,48 +155,4 @@ traceroute() {
     --net host \
     ${DOCKER_REPO_PREFIX}/traceroute "$@"
 }
-transmission() {
-  del_stopped transmission
 
-	docker run \
-    --disable-content-trust \
-	-d \
-	-v "${HOME}/Torrents:/downloads" \
-	-v "${HOME}/.transmission:/config" \
-	-e PGID=1000 \
-	-e PUID=1000 \
-	-e TZ=America/Chicago \
-	-p 9091:9091 \
-	-p 51413:51413 \
-	-p 51413:51413/udp \
-	--name transmission \
-	linuxserver/transmission
-}
-
-###
-### Awesome sauce by @jpetazzo
-###
-if command -v "docker" &>/dev/null; then
-  command_not_found_handle() {
-    # Check if there is a container image with that name
-    if ! docker inspect --format '{{ .Author }}' "$1" >&/dev/null; then
-      echo "$0: $1: command not found"
-      return
-    fi
-
-    # Check that it's really the name of the image, not a prefix
-    if docker inspect --format '{{ .Id }}' "$1" | grep -q "^$1"; then
-      echo "$0: $1: command not found"
-      return
-    fi
-
-    docker run -ti -u "$(whoami)" -w "$HOME" \
-      "$(env | cut -d= -f1 | awk '{print "-e", $1}')" \
-      --device /dev/snd \
-      -v /etc/passwd:/etc/passwd:ro \
-      -v /etc/group:/etc/group:ro \
-      -v /etc/localtime:/etc/localtime:ro \
-      -v /home:/home \
-      "${DOCKER_REPO_PREFIX}/${1}" "$@"
-  }
-fi
