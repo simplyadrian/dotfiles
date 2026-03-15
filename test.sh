@@ -485,8 +485,10 @@ except Exception as e:
 
   # ── Service parity: compose vs k8s ────────────────────────────────────
   if [[ -d "./media/k8s" ]]; then
-    local -a k8s_apps
-    mapfile -t k8s_apps < <(grep -rh 'app:' media/k8s/*.yaml 2>/dev/null \
+    local -a k8s_apps=()
+    while IFS= read -r app; do
+      [[ -n "$app" ]] && k8s_apps+=("$app")
+    done < <(grep -rh 'app:' media/k8s/*.yaml 2>/dev/null \
       | awk '{print $NF}' | sort -u)
 
     local missing=0
@@ -504,8 +506,10 @@ except Exception as e:
   # ── .env.example covers all vars used in compose ──────────────────────
   if [[ -f "$env_example" ]]; then
     # Extract ${VAR_NAME:-...} or ${VAR_NAME} references
-    local -a compose_vars
-    mapfile -t compose_vars < <(grep -oE '\$\{[A-Z_]+' "$compose_file" \
+    local -a compose_vars=()
+    while IFS= read -r var; do
+      [[ -n "$var" ]] && compose_vars+=("$var")
+    done < <(grep -oE '\$\{[A-Z_]+' "$compose_file" \
       | sed 's/\${//' | sort -u)
 
     local env_missing=0

@@ -2,7 +2,7 @@
 
 Personal dotfiles for **macOS** and **Ubuntu** workstations with Rancher Desktop, Kubernetes, and a complete media server stack.
 
-**Platform Support:** macOS 11+ Big Sur through Tahoe (Intel & Apple Silicon) • Ubuntu 20.04+  
+**Platform Support:** macOS 11 Big Sur through Tahoe (Intel & Apple Silicon) • Ubuntu 20.04+  
 **Container Runtime:** [Rancher Desktop](https://rancherdesktop.io/) (macOS 12+) or Docker + Colima (macOS 11)
 
 ---
@@ -12,17 +12,17 @@ Personal dotfiles for **macOS** and **Ubuntu** workstations with Rancher Desktop
 ### 1. Install Everything
 
 ```bash
-git clone https://github.com/simplyadrian/dotfiles.git ~/dotfiles
+git clone git@github.com-personal:simplyadrian/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 make
 ```
 
 This installs:
 - ✅ Base packages via Homebrew (macOS) or apt (Ubuntu)
-- ✅ **macOS 12+**: Rancher Desktop (docker CLI + Kubernetes)
-- ✅ **macOS 11**: Docker CLI + Colima (no Kubernetes — Rancher Desktop requires 12+)
+- ✅ **macOS 12+**: Rancher Desktop (docker CLI + Kubernetes) + kubectl, helm, k9s
+- ✅ **macOS 11**: Docker CLI + Colima (docker only — Rancher Desktop requires 12+)
 - ✅ Custom shell configuration and scripts
-- ✅ kubectl, helm, k9s CLI tools
+- ✅ **macOS 11**: Pins packages that can't upgrade on Homebrew Tier 3 (go, gcc, llvm, gnupg, etc.)
 
 ### 2. ⚠️ **IMPORTANT:** Secure Your Personal Info
 
@@ -32,21 +32,18 @@ Before using, **customize these files** (they contain personal information):
 # 1. Create your personal config (gitignored)
 cp .extra.example ~/.extra
 vim ~/.extra
-# → Add your git credentials, SSH aliases, secrets
+# → Add your git credentials, SSH aliases, media stack paths, secrets
 
 # 2. Update .gitconfig with your info
 vim .gitconfig
 # → Change name, email, signing key
-
-# 3. Update media stack paths (if using)
-# Edit media/k8s/*.yaml
-# → Change /home/aherrera/ to your username
 ```
 
 **⚠️ Never commit secrets!** Use `~/.extra` (gitignored) for:
 - Git credentials
 - SSH host aliases and IP addresses
 - API tokens (PLEX_CLAIM, AWS keys)
+- Media stack paths (CONFIG_PATH, MEDIA_PATH, etc.)
 - Personal paths and host-specific config
 
 ### 3. Multi-Account GitHub (SSH)
@@ -69,13 +66,15 @@ ssh -T git@github.com            # → work account
 ssh -T git@github.com-personal   # → personal account
 ```
 
-**Cloning:**
+**Cloning & Account Management:**
 ```bash
 ghclone org/repo               # clone with work account
 ghclone-personal user/repo     # clone with personal account
-ghwhoami                        # show which account a repo uses
-ghswitch                        # toggle a repo between work/personal
+ghwhoami                       # show which account a repo uses
+ghswitch                       # toggle a repo between work/personal
 ```
+
+> These functions are defined in `.functions` and rely on the SSH host aliases in `ssh_config.example`.
 
 ### 4. Configure Container Runtime
 
@@ -89,17 +88,18 @@ Launch **Rancher Desktop** and configure:
 **macOS 11 (Colima):**
 
 ```bash
-colima start                  # start the Docker engine
+colima start                     # start the Docker engine
 colima start --cpu 4 --memory 8  # with more resources
 ```
 
-> ⚠️ Kubernetes and the media stack k8s manifests are not available on macOS 11. Docker containers (`.dockerfunc`) work fine.
+> ⚠️ Kubernetes and the media stack k8s manifests are not available on macOS 11.
+> Docker containers (`.dockerfunc`) and Docker Compose (`media/docker-compose.yaml`) work fine.
 
 Verify everything works:
 ```bash
 docker ps              # container management
 kubectl get nodes      # kubernetes cluster (macOS 12+ only)
-helm version           # helm charts
+helm version           # helm charts (macOS 12+ only)
 ```
 
 ### 5. (Optional) Deploy Media Stack
@@ -107,15 +107,21 @@ helm version           # helm charts
 A complete self-hosted media server stack is included:
 - Plex, Transmission, Sonarr, Radarr, Prowlarr, Bazarr, Overseerr, Flaresolverr
 
-```bash
-# Create config directories
-mkdir -p ~/docker/configs/{transmission,sonarr,radarr,prowlarr,bazarr,overseerr}
+**Two deployment options:**
+- **Docker Compose** — works on all supported macOS (including Big Sur)
+- **Kubernetes** — requires Rancher Desktop with k8s enabled (macOS 12+)
 
-# Deploy to Kubernetes
-media_up       # kubectl apply all manifests
-media_ps       # check pod status
-media_logs plex  # tail logs
-media_svc      # list endpoints
+```bash
+# Docker Compose (all macOS versions)
+cp media/.env.example media/.env
+vim media/.env        # set your paths and tokens
+cd media && docker compose up -d
+
+# Kubernetes (macOS 12+ only)
+media_up              # kubectl apply all manifests
+media_ps              # check pod status
+media_logs plex       # tail logs
+media_svc             # list endpoints
 ```
 
 See [`media/README.md`](media/README.md) for architecture and full setup.
@@ -132,36 +138,43 @@ See [`media/README.md`](media/README.md) for architecture and full setup.
 | `.bash_profile` | Login shell setup |
 | `.bash_prompt` | Custom PS1 prompt |
 | `.aliases` | Command shortcuts (80+ aliases) |
-| `.functions` | Useful shell functions |
+| `.functions` | Useful shell functions (GitHub helpers, calc, etc.) |
 | `.exports` | Environment variables |
-| `.path` | PATH configuration |
+| `.path` | PATH configuration (Homebrew, Rancher Desktop `~/.rd/bin`) |
+| `.dockerfunc` | Docker wrappers + media stack k8s helpers |
 | `.extra` | **Your personal config** (gitignored) |
+| `.extra.example` | Template for `.extra` |
 
 ### Container & Kubernetes Tools
 
-- **Docker CLI** via Rancher Desktop's moby engine
+- **Docker CLI** via Rancher Desktop's moby engine (macOS 12+) or Colima (macOS 11)
 - **kubectl** aliases: `k`, `kgp`, `kgs`, `kga`, etc. (all use `-A` for safety)
-- **media_*** helpers: `media_up`, `media_down`, `media_logs`, `media_ps`
+- **media_*** k8s helpers: `media_up`, `media_down`, `media_logs`, `media_ps`, `media_svc`
+- **Docker Compose** media stack for macOS 11+ (no k8s required)
 - **dcleanup()** — Clean up stopped containers and dangling images
 
 ### Custom Scripts (`bin/`)
 
 | Script | Purpose |
 |--------|---------|
-| `htotheizzo` | Update homebrew/apt + cleanup docker images |
+| `htotheizzo` | Update homebrew/apt + auto-pin Tier 3 packages + cleanup docker images |
+| `install_base.sh` | Full system setup script (macOS 11+ and Ubuntu 20.04+) |
 | `macos-defaults` | Configure macOS system preferences |
-| `install_base.sh` | Full system setup script |
 | `gitdate` | Commit with custom dates |
 | `openprs` | List open PRs across all repos |
-| More... | `update-repos`, `cleanup-non-running-images`, etc. |
+| `keysign` | GPG key signing helper |
+| `avconvert` | Audio/video conversion |
+| `cleanup-non-running-images` | Remove stopped Docker images |
+| `update-repos` | Pull latest on all repos in a directory |
+| `update-mirrors` | Update package mirrors |
 
 ### Security Features
 
-✅ **Removed dangerous aliases** — No more `prikey` that exposed private SSH keys  
 ✅ **Auto-detect network interfaces** — `sniff`/`httpdump` work on any system  
 ✅ **Namespace-aware k8s** — kubectl aliases use `-A` to prevent accidents  
-✅ **OS detection cached** — Faster shell startup (10+ `uname` calls eliminated)  
-✅ **Secrets in `.extra`** — Never commit personal info to git
+✅ **OS detection cached** — Faster shell startup  
+✅ **Secrets in `.extra`** — Never commit personal info to git  
+✅ **Multi-account SSH** — Work and personal GitHub accounts via separate keys
 
 ---
 
@@ -182,9 +195,16 @@ git config --global user.email "$GIT_AUTHOR_EMAIL"
 alias work="ssh user@work-server.com"
 alias home="ssh user@192.168.1.100"
 
-# Media stack config
-export PLEX_CLAIM="claim-XXXX"  # Get from https://plex.tv/claim
+# Media stack paths
+export MEDIA_PATH="/mnt/media"
+export DOWNLOADS_PATH="/home/you/Torrents"
+export CONFIG_PATH="/home/you/docker/configs"
+export PLEX_CONFIG_PATH="/mnt/plexmediaserver"
+export PLEX_TRANSCODE_PATH="/tmp/plex-transcode"
 export TZ="America/New_York"
+export PUID=1000
+export PGID=1000
+# export PLEX_CLAIM="claim-XXXX"  # Get from https://plex.tv/claim
 ```
 
 See [`.extra.example`](.extra.example) for all available options.
@@ -194,6 +214,10 @@ See [`.extra.example`](.extra.example) for all available options.
 ```bash
 htotheizzo  # Updates homebrew (macOS) or apt (Ubuntu) + docker cleanup
 ```
+
+> On macOS 11 (Big Sur), `htotheizzo` automatically pins packages that can't upgrade
+> on Homebrew Tier 3 (go, gcc, llvm, gnupg, gnutls, docker, colima, lima, and their
+> dependents like qemu) before running `brew upgrade`.
 
 ### macOS System Preferences
 
@@ -209,47 +233,55 @@ Complete self-hosted media server with request management and automation.
 
 **Services:** Plex • Transmission • Sonarr • Radarr • Prowlarr • Bazarr • Overseerr • Flaresolverr
 
-**Deployment:** Kubernetes manifests in `media/k8s/`
+**Deployment Options:**
+- **Docker Compose** (`media/docker-compose.yaml`) — all macOS versions
+- **Kubernetes** (`media/k8s/`) — requires Rancher Desktop (macOS 12+)
 
-**Shell Helpers:**
+**Shell Helpers (Kubernetes):**
 ```bash
-media_up         # Deploy everything
-media_down       # Tear down namespace
+media_up         # Deploy all k8s manifests
+media_down       # Tear down media namespace
 media_ps         # Pod status
 media_logs <svc> # Tail logs (e.g., media_logs plex)
 media_svc        # Service endpoints
 ```
 
-**Before deploying:**
-1. Edit `media/k8s/*.yaml` — change `/home/aherrera/` to your paths
-2. Create secrets: `kubectl create secret generic media-secrets --namespace media --from-literal=plex-claim="claim-XXXX"`
-
 Full docs: [media/README.md](media/README.md)
 
 ---
 
-## Migration
+## macOS 11 (Big Sur) Notes
 
-### From Docker Desktop / Colima
+macOS 11 is [Homebrew Tier 3](https://docs.brew.sh/Support-Tiers#tier-3) — many packages
+lack pre-built bottles and must compile from source, which frequently fails.
 
-```bash
-brew uninstall --cask docker
-brew uninstall colima docker
-```
-
-Rancher Desktop replaces both and adds Kubernetes.
+**What's different on macOS 11:**
+- **Rancher Desktop** → not available (requires macOS 12+). Uses Docker + Colima instead
+- **Kubernetes** → not available (no k8s cluster). Use Docker Compose for media stack
+- **Homebrew packages** → installed individually (one failure won't abort the rest)
+- **Skipped packages** → cmake, gcc, gnupg, helm, kubectl, k9s (all depend on `go` or fail to build)
+- **Pinned packages** → go, gcc, llvm, gnupg, gnutls, docker, colima, lima, and any dependents
+  (prevents `brew upgrade` from attempting and failing on these)
 
 ---
 
 ## Testing
 
-Validate shell scripts with shellcheck:
+Comprehensive test suite for validating dotfiles:
 
 ```bash
-make test
+make test           # Run shellcheck (locally or via docker)
+./test.sh all       # Run all tests
+./test.sh quick     # Syntax + secrets + permissions (no shellcheck)
+./test.sh shell     # Shell syntax + shellcheck only
+./test.sh yaml      # YAML/k8s manifest + Docker Compose validation
+./test.sh docker    # Docker Compose validation only
+./test.sh secrets   # Credential leak scan only
 ```
 
-Runs locally if `shellcheck` is installed, otherwise uses Docker container.
+**Tests include:** shell syntax, shellcheck lint, YAML validation, kubectl dry-run,
+secrets scan, file permissions, dotfile integrity, Python version references,
+path hygiene (hardcoded paths), and Docker Compose validation.
 
 ---
 
@@ -263,10 +295,12 @@ Before committing changes:
 - [ ] `.extra` exists and is in `.gitignore`
 - [ ] Kubernetes secrets use `kubectl create secret`, not YAML
 
+See [SECURITY.md](SECURITY.md) for full guidelines.
+
 **Files to customize before using:**
 1. `.gitconfig` — Update name, email, signing key
 2. `~/.extra` — Add all personal config (use `.extra.example` as template)
-3. `media/k8s/*.yaml` — Update hardcoded paths
+3. `ssh_config.example` → `~/.ssh/config` — Set up your SSH keys
 
 ---
 
@@ -274,20 +308,41 @@ Before committing changes:
 
 ```
 dotfiles/
-├── .aliases          # 80+ command shortcuts
-├── .bashrc           # Main shell config
-├── .dockerfunc       # Container helpers
-├── .extra            # YOUR personal config (gitignored)
-├── .extra.example    # Template
-├── .functions        # Shell utility functions
-├── .gitconfig        # Git configuration
-├── bin/              # Custom scripts
-│   ├── htotheizzo
-│   ├── macos-defaults
-│   └── install_base.sh
-└── media/            # Media server stack
-    ├── README.md
-    └── k8s/          # Kubernetes manifests
+├── .aliases            # 80+ command shortcuts
+├── .bash_profile       # Login shell setup
+├── .bash_prompt        # Custom PS1 prompt
+├── .bashrc             # Main shell config
+├── .dockerfunc         # Container helpers + media stack k8s commands
+├── .exports            # Environment variables
+├── .extra.example      # Template for personal config
+├── .functions          # Shell functions (GitHub helpers, etc.)
+├── .gitconfig          # Git configuration
+├── .inputrc            # Readline config
+├── .path               # PATH setup (Homebrew, ~/.rd/bin)
+├── .tmux.conf          # tmux configuration
+├── gitignore           # Global gitignore
+├── ssh_config.example  # Multi-account SSH template
+├── Makefile            # Install targets (base, bin, dotfiles, test)
+├── test.sh             # Comprehensive test suite
+├── SECURITY.md         # Security guidelines
+├── bin/                # Custom scripts
+│   ├── htotheizzo      # System updater
+│   ├── install_base.sh # Full system setup
+│   ├── macos-defaults  # macOS preferences
+│   ├── gitdate         # Custom date commits
+│   ├── openprs         # List open PRs
+│   └── ...
+└── media/              # Media server stack
+    ├── README.md       # Media stack documentation
+    ├── .env.example    # Compose environment template
+    ├── docker-compose.yaml  # Docker Compose deployment
+    └── k8s/            # Kubernetes manifests
+        ├── namespace.yaml
+        ├── plex.yaml
+        ├── sonarr-radarr.yaml
+        ├── prowlarr-flaresolverr.yaml
+        ├── bazarr-overseerr.yaml
+        └── transmission.yaml
 ```
 
 ---

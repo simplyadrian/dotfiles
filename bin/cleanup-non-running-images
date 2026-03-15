@@ -12,13 +12,17 @@ set -e
 set -o pipefail
 
 main() {
-  mapfile -t images < <(docker images -q --no-trunc)
+  local all_images
+  all_images=$(docker images -q --no-trunc)
   for c in $(docker ps -aq); do
+    local image
     image=$(docker inspect --format '{{.Image}}' "$c")
-    images=("${images[@]/$image/}")
+    all_images=$(echo "$all_images" | grep -v "$image" || true)
   done
 
-  docker rmi -f "${images[@]}" 2>&1 || true
+  if [ -n "$all_images" ]; then
+    echo "$all_images" | xargs docker rmi -f 2>&1 || true
+  fi
 }
 
 main

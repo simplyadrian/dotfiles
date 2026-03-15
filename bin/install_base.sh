@@ -59,7 +59,10 @@ check_os() {
 # Choose a user account to use for this installation
 get_user() {
   if [[ -z "${TARGET_USER-}" ]]; then
-    mapfile -t options < <(find /home/* -maxdepth 0 -printf "%f\\n" -type d)
+    local -a options=()
+    while IFS= read -r -d '' d; do
+      options+=("$(basename "$d")")
+    done < <(find /home/* -maxdepth 0 -type d -print0 2>/dev/null)
     # if there is only one option just use that user
     if [ "${#options[@]}" -eq "1" ]; then
       readonly TARGET_USER="${options[0]}"

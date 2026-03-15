@@ -4,9 +4,8 @@
 
 These dotfiles contain **personal information** that must be customized:
 
-1. **`.gitconfig`** — Contains Adrian Herrera's name, email, GPG key
-2. **`media/k8s/*.yaml`** — Hardcoded paths to `/home/aherrera/`
-3. **No `.extra` file** — You must create it from `.extra.example`
+1. **`.gitconfig`** — Contains name, email, GPG key (update to yours)
+2. **No `.extra` file** — You must create it from `.extra.example`
 
 ## What Goes Where
 
@@ -14,13 +13,14 @@ These dotfiles contain **personal information** that must be customized:
 - Shell configuration (`.bashrc`, `.aliases`, etc.)
 - Generic scripts and functions
 - `.extra.example` template (no secrets)
+- K8s manifests with `${VAR}` templates (no hardcoded paths)
 - Documentation
 
 ### ❌ Never Commit (Use `~/.extra`)
 - Git credentials (name, email)
 - SSH host aliases with IP addresses
 - API tokens (PLEX_CLAIM, AWS keys)
-- Personal paths
+- Media stack paths (CONFIG_PATH, MEDIA_PATH, etc.)
 - Passwords or secrets
 
 ## Quick Setup
@@ -28,13 +28,14 @@ These dotfiles contain **personal information** that must be customized:
 ```bash
 # 1. Create personal config
 cp .extra.example ~/.extra
-vim ~/.extra  # Add your info
+vim ~/.extra  # Add your info, paths, and secrets
 
 # 2. Update git config
 vim .gitconfig  # Change name, email, signing key
 
-# 3. Update media stack paths
-find media/k8s -name "*.yaml" -exec sed -i '' 's|/home/aherrera|/home/YOURUSERNAME|g' {} \;
+# 3. Set up SSH for multi-account GitHub
+cp ssh_config.example ~/.ssh/config
+chmod 600 ~/.ssh/config
 ```
 
 ## Security Checklist

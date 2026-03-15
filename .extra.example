@@ -34,7 +34,22 @@ git config --global github.user "$GH_USER"
 ###
 ### Environment variables for media stack
 ###
+# Timezone (used by all media stack containers)
+# export TZ="America/Chicago"
+
+# Plex claim token — expires after 4 minutes, regenerate when deploying
 # export PLEX_CLAIM="claim-XXXXXXXXXXXX"  # Get from https://plex.tv/claim
+
+# Paths for media stack (used by k8s manifests and docker-compose.yaml)
+# export MEDIA_PATH="/mnt/media"
+# export DOWNLOADS_PATH="/home/yourusername/Torrents"
+# export CONFIG_PATH="/home/yourusername/docker/configs"
+# export PLEX_CONFIG_PATH="/mnt/plexmediaserver"
+# export PLEX_TRANSCODE_PATH="/tmp/plex-transcode"
+
+# User/Group IDs for container permissions
+# export PUID=1000
+# export PGID=1000
 
 ###
 ### AWS credentials for docker containers

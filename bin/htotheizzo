@@ -10,14 +10,14 @@ dcleanup() {
     return 0
   fi
   local containers
-  mapfile -t containers < <(docker ps --filter status=exited -q 2>/dev/null)
-  if [ ${#containers[@]} -gt 0 ]; then
-    docker rm "${containers[@]}" 2>/dev/null
+  containers=$(docker ps --filter status=exited -q 2>/dev/null)
+  if [ -n "$containers" ]; then
+    echo "$containers" | xargs docker rm 2>/dev/null || true
   fi
   local images
-  mapfile -t images < <(docker images --filter dangling=true -q 2>/dev/null)
-  if [ ${#images[@]} -gt 0 ]; then
-    docker rmi "${images[@]}" 2>/dev/null
+  images=$(docker images --filter dangling=true -q 2>/dev/null)
+  if [ -n "$images" ]; then
+    echo "$images" | xargs docker rmi 2>/dev/null || true
   fi
 }
 
