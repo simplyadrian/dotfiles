@@ -9,6 +9,45 @@ set -o pipefail
 PLATFORM=$(uname)
 export DEBIAN_FRONTEND=noninteractive
 
+# Detect and display OS version
+check_os() {
+  if [[ $PLATFORM == 'Darwin' ]]; then
+    local macos_version
+    macos_version=$(sw_vers -productVersion)
+    local macos_major
+    macos_major=$(echo "$macos_version" | cut -d. -f1)
+    echo "Detected: macOS ${macos_version} ($(sw_vers -productName))"
+
+    if (( macos_major < 13 )); then
+      echo "ERROR: macOS 13 (Ventura) or later is required. You have ${macos_version}."
+      exit 1
+    fi
+  elif [[ $PLATFORM == 'Linux' ]]; then
+    if command -v lsb_release &>/dev/null; then
+      local distro
+      distro=$(lsb_release -ds)
+      local ubuntu_version
+      ubuntu_version=$(lsb_release -rs)
+      echo "Detected: ${distro}"
+
+      # Check for Ubuntu 20.04+
+      if [[ "$(lsb_release -is)" == "Ubuntu" ]]; then
+        local ubuntu_major
+        ubuntu_major=$(echo "$ubuntu_version" | cut -d. -f1)
+        if (( ubuntu_major < 20 )); then
+          echo "ERROR: Ubuntu 20.04 or later is required. You have ${ubuntu_version}."
+          exit 1
+        fi
+      fi
+    else
+      echo "Detected: Linux ($(uname -r))"
+    fi
+  else
+    echo "ERROR: Unsupported platform: ${PLATFORM}"
+    exit 1
+  fi
+}
+
 # Choose a user account to use for this installation
 get_user() {
   if [[ -z "${TARGET_USER-}" ]]; then
@@ -31,6 +70,8 @@ get_user() {
 }
 
 doit() {
+  check_os
+
   if [[ $PLATFORM == 'Darwin' ]]; then
     install_mac_base
     install_scripts
@@ -191,10 +232,12 @@ setup_sources() {
   echo "deb [signed-by=/usr/share/keyrings/isv-rancher-stable-archive-keyring.gpg] https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/ ./" \
     | sudo tee /etc/apt/sources.list.d/isv-rancher-stable.list
 
-  # Add kubectl repository
-  curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key \
+  # Add kubectl repository (latest stable)
+  local k8s_version
+  k8s_version=$(curl -fsSL https://dl.k8s.io/release/stable.txt | sed 's/\.[0-9]*$//' | sed 's/v//')
+  curl -fsSL "https://pkgs.k8s.io/core:/stable:/v${k8s_version}/deb/Release.key" \
     | gpg --dearmor | sudo tee /usr/share/keyrings/kubernetes-apt-keyring.gpg >/dev/null
-  echo "deb [signed-by=/usr/share/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /" \
+  echo "deb [signed-by=/usr/share/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${k8s_version}/deb/ /" \
     | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
   # Add helm repository
@@ -330,10 +373,15 @@ configure_rancher_desktop() {
 install_vim() {
   if [[ $PLATFORM == 'Linux' ]]; then
 	  # Install Node.js (needed for coc.vim)
-	  # Using NodeSource Node.js 20.x LTS with modern signed-by approach
+	  # Detect latest LTS major version dynamically
+	  local node_major
+	  node_major=$(curl -fsSL https://nodejs.org/dist/index.json \
+	    | python3 -c "import json,sys; d=json.load(sys.stdin); print([x['version'] for x in d if x.get('lts')][0].split('.')[0].lstrip('v'))")
+	  echo "Installing Node.js ${node_major}.x LTS..."
+
 	  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
 	    | gpg --dearmor | sudo tee /usr/share/keyrings/nodesource.gpg >/dev/null
-	  echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
+	  echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${node_major}.x nodistro main" \
 	    | sudo tee /etc/apt/sources.list.d/nodesource.list
 
 	  sudo apt-get update || true
