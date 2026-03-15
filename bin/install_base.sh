@@ -298,16 +298,22 @@ install_mac_base() {
         echo "  Pinned (root): ${root_pins[*]}"
       fi
 
-      # Cascade: pin outdated packages that depend on any pinned package
+      # Cascade: pin any installed package that depends on a root-pinned package.
+      # Uses 'brew list' (all installed) not 'brew outdated' — right after install
+      # nothing is outdated yet, but these packages WILL fail to upgrade later.
       local -a cascade_pins=()
       while IFS= read -r pkg; do
+        # Skip packages already in root_pins
+        for rp in "${root_pins[@]}"; do
+          [[ "$pkg" == "$rp" ]] && continue 2
+        done
         for pinned in "${root_pins[@]}"; do
           if brew deps --include-build "$pkg" 2>/dev/null | grep -q "^${pinned}$"; then
             cascade_pins+=("$pkg")
             break
           fi
         done
-      done < <(brew outdated --formula 2>/dev/null)
+      done < <(brew list --formula 2>/dev/null)
       if [[ ${#cascade_pins[@]} -gt 0 ]]; then
         brew pin "${cascade_pins[@]}" 2>/dev/null || true
         echo "  Pinned (deps): ${cascade_pins[*]}"
