@@ -183,12 +183,12 @@ install_mac_base() {
       eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv 2>/dev/null)"
     fi
 
+    # Core packages — these work on all supported macOS versions (11+)
     brew update && brew install \
       bash-completion \
       bash \
       bc \
       bzip2 \
-      cmake \
       curl \
       findutils \
       fortune \
@@ -197,12 +197,9 @@ install_mac_base() {
       gnu-indent \
       grep \
       gzip \
-      helm \
       highlight \
       icdiff \
       jq \
-      k9s \
-      kubectl \
       less \
       lsof \
       make \
@@ -215,21 +212,26 @@ install_mac_base() {
       unzip \
       vim
 
-    # gnupg/gnupg2 depend on gnutls → llvm which cannot compile on macOS 11 (Tier 3).
-    # On macOS 12+ bottles are available so install works fine.
+    # ── macOS 12+ only packages ──────────────────────────────────────────
+    # These packages depend on 'go' or other formulae that require macOS 12 (Monterey)+.
+    # On macOS 11 (Big Sur / Tier 3), Homebrew has no bottles and source builds fail.
     if (( MACOS_MAJOR >= 12 )); then
-      brew install gnupg 2>/dev/null || echo "⚠️  gnupg install failed (non-critical)"
-    else
-      echo "⚠️  Skipping gnupg on macOS ${MACOS_MAJOR} (dependency gnutls→llvm cannot build from source)"
-      echo "   If you need GPG, install GPG Suite manually: https://gpgtools.org"
-    fi
+      brew install cmake 2>/dev/null  || echo "⚠️  cmake install skipped (non-critical)"
+      brew install gcc 2>/dev/null    || echo "⚠️  gcc install skipped (non-critical)"
+      brew install gnupg 2>/dev/null  || echo "⚠️  gnupg install skipped (non-critical)"
 
-    # gcc requires compilation from source on older macOS (no bottles)
-    # and will fail on macOS 11 (Tier 3). Xcode CLT provides clang/cc which is sufficient.
-    if (( MACOS_MAJOR >= 12 )); then
-      brew install gcc 2>/dev/null || echo "⚠️  gcc install skipped (non-critical)"
+      # Kubernetes tools (helm, kubectl, k9s depend on go which requires macOS 12+)
+      brew install helm kubectl k9s 2>/dev/null || echo "⚠️  k8s tools install had issues (non-critical)"
     else
-      echo "⚠️  Skipping gcc on macOS ${MACOS_MAJOR} (no Homebrew bottle available; Xcode CLT provides cc/clang)"
+      echo ""
+      echo "⚠️  Skipping macOS 12+ packages on macOS ${MACOS_MAJOR} (Big Sur / Homebrew Tier 3):"
+      echo "   - cmake   (Xcode CLT provides build tools)"
+      echo "   - gcc     (Xcode CLT provides cc/clang)"
+      echo "   - gnupg   (dependency gnutls→llvm cannot build; use https://gpgtools.org)"
+      echo "   - helm    (depends on go; no k8s on this machine anyway)"
+      echo "   - kubectl (depends on go; no k8s on this machine anyway)"
+      echo "   - k9s     (depends on go; no k8s on this machine anyway)"
+      echo ""
     fi
 
     # Install container runtime
