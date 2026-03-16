@@ -1,0 +1,71 @@
+###############################################################################
+# LazyLibrarian — ebook/audiobook management — Kubernetes Deployment + Service
+###############################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lazylibrarian
+  namespace: media
+  labels:
+    app: lazylibrarian
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: lazylibrarian
+  template:
+    metadata:
+      labels:
+        app: lazylibrarian
+    spec:
+      containers:
+        - name: lazylibrarian
+          image: lscr.io/linuxserver/lazylibrarian:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "America/Chicago"
+            - name: DOCKER_MODS
+              value: "linuxserver/mods:lazylibrarian-ffmpeg"
+          ports:
+            - containerPort: 5299
+              name: web
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: books
+              mountPath: /books
+            - name: downloads
+              mountPath: /downloads
+      volumes:
+        - name: config
+          hostPath:
+            path: ${CONFIG_PATH}/lazylibrarian
+            type: DirectoryOrCreate
+        - name: books
+          hostPath:
+            path: ${MEDIA_PATH}/books
+            type: DirectoryOrCreate
+        - name: downloads
+          hostPath:
+            path: ${DOWNLOADS_PATH}
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lazylibrarian
+  namespace: media
+spec:
+  selector:
+    app: lazylibrarian
+  ports:
+    - port: 5299
+      targetPort: 5299
+  type: NodePort
+

@@ -15,6 +15,7 @@ Self-hosted media stack with two deployment options:
 | **Radarr** | 7878 | Movie management |
 | **Prowlarr** | 9696 | Indexer manager (feeds Sonarr/Radarr) |
 | **Bazarr** | 6767 | Subtitle management |
+| **LazyLibrarian** | 5299 | Ebook/audiobook management |
 | **Overseerr** | 5055 | Request management (Plex-compatible) |
 | **Flaresolverr** | 8191 | Cloudflare bypass (used by Prowlarr) |
 
@@ -42,13 +43,13 @@ Self-hosted media stack with two deployment options:
               │ Flaresolverr│ :8191
               └─────────────┘
 
-        ┌────────────┐     ┌──────────┐
-        │Transmission│     │  Bazarr  │
-        │   :9091    │     │  :6767   │
-        └─────┬──────┘     └────┬─────┘
-              │ downloads       │ subtitles
-              ▼                 ▼
-        ~/Torrents          /mnt/media
+        ┌────────────┐     ┌──────────┐     ┌───────────────┐
+        │Transmission│     │  Bazarr  │     │LazyLibrarian  │
+        │   :9091    │     │  :6767   │     │     :5299     │
+        └─────┬──────┘     └────┬─────┘     └──┬─────────┬──┘
+              │ downloads       │ subtitles     │ books   │ downloads
+              ▼                 ▼               ▼         ▼
+        ~/Torrents          /mnt/media    /mnt/media   ~/Torrents
 
                     ┌──────────┐
                     │   Plex   │ :32400  (host network)
@@ -63,7 +64,7 @@ Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or a
 
 ```bash
 # 1. Create config directories
-mkdir -p ~/docker/configs/{plex,transmission,sonarr,radarr,prowlarr,bazarr,overseerr}
+mkdir -p ~/docker/configs/{plex,transmission,sonarr,radarr,prowlarr,bazarr,lazylibrarian,overseerr}
 
 # 2. Ensure ~/.extra has media stack vars configured
 #    See .extra.example for the full list (MEDIA_PATH, DOWNLOADS_PATH, etc.)
@@ -89,7 +90,7 @@ Requires Rancher Desktop with Kubernetes enabled.
 
 ```bash
 # 1. Create config directories
-mkdir -p ~/docker/configs/{transmission,sonarr,radarr,prowlarr,bazarr,overseerr}
+mkdir -p ~/docker/configs/{transmission,sonarr,radarr,prowlarr,bazarr,lazylibrarian,overseerr}
 
 # 2. (Optional) Create Plex claim secret
 kubectl create secret generic media-secrets \
@@ -145,8 +146,9 @@ These are loaded from `.dockerfunc`:
 | Path | Purpose |
 |---|---|
 | `~/docker/configs/<service>` | Per-service configuration (bind-mount volumes) |
-| `~/Torrents` | Download directory (Transmission) |
+| `~/Torrents` | Download directory (Transmission, LazyLibrarian) |
 | `/mnt/media` | Media library (movies, TV, music) |
+| `/mnt/media/books` | Ebook/audiobook library (LazyLibrarian) |
 | `/mnt/plexmediaserver` | Plex server config |
 
 > **Note:** Paths are configured via environment variables in `~/.extra` (see `.extra.example`).
@@ -162,6 +164,7 @@ After deploying, configure each service through its web UI:
 4. **Radarr** → `http://localhost:7878` — Add root folder `/mnt/media/movies`, connect download client `http://transmission:9091`
 5. **Bazarr** → `http://localhost:6767` — Connect to Sonarr (`http://sonarr:8989`) and Radarr (`http://radarr:7878`)
 6. **Overseerr** → `http://localhost:5055` — Connect to Plex, Sonarr, and Radarr
-7. **Transmission** → `http://localhost:9091` — Default credentials in pod logs
+7. **LazyLibrarian** → `http://localhost:5299` — Add book root folder `/books`, connect download client `http://transmission:9091`
+8. **Transmission** → `http://localhost:9091` — Default credentials in pod logs
 
 > **Tip:** When configuring connections *between* services, use the service/container name (e.g., `http://sonarr:8989`) not `localhost`. This works with both Docker Compose and Kubernetes.

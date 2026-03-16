@@ -131,6 +131,25 @@ services:
       - ${MEDIA_PATH:-/mnt/media}:/mnt/media
 
   ###########################################################################
+  # LazyLibrarian — ebook/audiobook management
+  ###########################################################################
+  lazylibrarian:
+    image: lscr.io/linuxserver/lazylibrarian:latest
+    container_name: lazylibrarian
+    restart: unless-stopped
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-America/Chicago}
+      DOCKER_MODS: linuxserver/mods:lazylibrarian-ffmpeg
+    ports:
+      - "5299:5299"
+    volumes:
+      - ${CONFIG_PATH:-~/docker/configs}/lazylibrarian:/config
+      - ${MEDIA_PATH:-/mnt/media}/books:/books
+      - ${DOWNLOADS_PATH:-~/Torrents}:/downloads
+
+  ###########################################################################
   # Overseerr — request management (Plex-compatible)
   ###########################################################################
   overseerr:
