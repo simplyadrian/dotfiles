@@ -63,7 +63,8 @@ services:
     volumes:
       - ${CONFIG_PATH:-~/docker/configs}/sonarr:/config
       - ${MEDIA_PATH:-/mnt/media}:/mnt/media
-      - ${DOWNLOADS_PATH:-~/Torrents}:/mnt/downloads
+      - ${MEDIA_PATH:-/mnt/media}/tvshows:/tv
+      - ${DOWNLOADS_PATH:-~/Torrents}:/downloads
 
   ###########################################################################
   # Radarr — movie management
@@ -81,7 +82,7 @@ services:
     volumes:
       - ${CONFIG_PATH:-~/docker/configs}/radarr:/config
       - ${MEDIA_PATH:-/mnt/media}:/mnt/media
-      - ${DOWNLOADS_PATH:-~/Torrents}:/mnt/downloads
+      - ${DOWNLOADS_PATH:-~/Torrents}:/downloads
 
   ###########################################################################
   # Prowlarr — indexer manager (feeds Sonarr / Radarr)

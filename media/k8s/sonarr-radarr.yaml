@@ -38,8 +38,10 @@ spec:
               mountPath: /config
             - name: media
               mountPath: /mnt/media
+            - name: tv
+              mountPath: /tv
             - name: downloads
-              mountPath: /mnt/downloads
+              mountPath: /downloads
       volumes:
         - name: config
           hostPath:
@@ -48,6 +50,10 @@ spec:
         - name: media
           hostPath:
             path: ${MEDIA_PATH}
+            type: DirectoryOrCreate
+        - name: tv
+          hostPath:
+            path: ${MEDIA_PATH}/tvshows
             type: DirectoryOrCreate
         - name: downloads
           hostPath:
@@ -105,7 +111,7 @@ spec:
             - name: media
               mountPath: /mnt/media
             - name: downloads
-              mountPath: /mnt/downloads
+              mountPath: /downloads
       volumes:
         - name: config
           hostPath:
