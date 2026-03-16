@@ -1,4 +1,4 @@
-.PHONY: all base bin dotfiles etc test test-quick test-yaml test-secrets shellcheck
+.PHONY: all base bin dotfiles etc test test-quick test-yaml test-secrets shellcheck media
 
 PLATFORM := $(shell uname)
 
@@ -72,3 +72,31 @@ shellcheck:
 			--workdir /usr/src \
 			koalaman/shellcheck-alpine ./test.sh; \
 	fi
+
+###############################################################################
+# Media Stack — create config dirs, download dirs & symlink tracked configs
+# Usage: make media
+###############################################################################
+MEDIA_SERVICES := bazarr lazylibrarian overseerr prowlarr radarr sabnzbd sonarr transmission
+MEDIA_CONFIG_DEST := $(HOME)/docker/configs
+MEDIA_DOWNLOADS := $(HOME)/Torrents
+
+media:
+	# Create config directories for each media service
+	@for svc in $(MEDIA_SERVICES); do \
+		mkdir -p $(MEDIA_CONFIG_DEST)/$$svc; \
+	done
+	# Create download directories (shared by Transmission & SABnzbd)
+	@mkdir -p $(MEDIA_DOWNLOADS)/complete $(MEDIA_DOWNLOADS)/incomplete
+	# Symlink tracked config files into place
+	@for src in $$(find $(CURDIR)/media/configs -type f); do \
+		rel=$${src#$(CURDIR)/media/configs/}; \
+		dest=$(MEDIA_CONFIG_DEST)/$$rel; \
+		mkdir -p $$(dirname $$dest); \
+		ln -sfn "$$src" "$$dest"; \
+		echo "  linked $$rel"; \
+	done
+	@echo ""
+	@echo "Config directories ready. Start the stack with:"
+	@echo "  cd $(CURDIR)/media && docker compose up -d"
+
