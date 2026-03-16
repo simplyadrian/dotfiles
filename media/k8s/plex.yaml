@@ -25,6 +25,7 @@ spec:
       containers:
         - name: plex
           image: plexinc/pms-docker:latest
+          imagePullPolicy: Always
           env:
             - name: TZ
               value: "America/Chicago"

@@ -131,6 +131,62 @@ media_svc() {
   _media_check_kubectl || return 1
   kubectl get svc -n media
 }
+media_update() {
+  # Pull latest images and rolling-restart all media deployments.
+  # Usage: media_update [service ...]
+  #   media_update          — update ALL services
+  #   media_update sonarr   — update only sonarr
+  _media_check_kubectl || return 1
+
+  local -a deployments
+  if [[ $# -gt 0 ]]; then
+    deployments=("$@")
+  else
+    mapfile -t deployments < <(kubectl get deployments -n media -o jsonpath='{.items[*].metadata.name}')
+  fi
+
+  for dep in "${deployments[@]}"; do
+    echo "⟳  Rolling restart: ${dep}"
+    kubectl rollout restart deployment/"${dep}" -n media
+  done
+
+  echo ""
+  echo "Waiting for rollouts to complete..."
+  for dep in "${deployments[@]}"; do
+    kubectl rollout status deployment/"${dep}" -n media --timeout=120s
+  done
+  echo "✓ Update complete. Run 'media_ps' to verify."
+}
+media_restart() {
+  # Restart a single service (delete its pod so it gets recreated)
+  _media_check_kubectl || return 1
+  if [[ -z "$1" ]]; then
+    echo "Usage: media_restart <service> (e.g. media_restart sonarr)"
+    return 1
+  fi
+  kubectl delete pod -n media -l "app=$1"
+  echo "Pod for $1 deleted — Kubernetes will recreate it."
+}
+media_shell() {
+  # Open a shell inside a running service pod
+  _media_check_kubectl || return 1
+  if [[ -z "$1" ]]; then
+    echo "Usage: media_shell <service> (e.g. media_shell sonarr)"
+    return 1
+  fi
+  local pod
+  pod=$(kubectl get pods -n media -l "app=$1" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+  if [[ -z "$pod" ]]; then
+    echo "No running pod found for app=$1"
+    return 1
+  fi
+  kubectl exec -it -n media "$pod" -- /bin/bash 2>/dev/null || kubectl exec -it -n media "$pod" -- /bin/sh
+}
+media_images() {
+  # Show current image versions for all media pods
+  _media_check_kubectl || return 1
+  kubectl get pods -n media -o custom-columns='POD:.metadata.name,IMAGE:.spec.containers[*].image,STATUS:.status.phase'
+}
 
 #
 # Standalone Container Aliases

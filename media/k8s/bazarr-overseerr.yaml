@@ -23,6 +23,7 @@ spec:
       containers:
         - name: bazarr
           image: lscr.io/linuxserver/bazarr:latest
+          imagePullPolicy: Always
           env:
             - name: PUID
               value: "1000"
@@ -83,6 +84,7 @@ spec:
       containers:
         - name: overseerr
           image: lscr.io/linuxserver/overseerr:latest
+          imagePullPolicy: Always
           env:
             - name: PUID
               value: "1000"

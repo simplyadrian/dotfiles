@@ -23,6 +23,7 @@ spec:
       containers:
         - name: transmission
           image: lscr.io/linuxserver/transmission:latest
+          imagePullPolicy: Always
           env:
             - name: PUID
               value: "1000"

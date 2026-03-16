@@ -135,6 +135,11 @@ These are loaded from `.dockerfunc`:
 | `media_ps` | List pod status |
 | `media_logs <svc>` | Tail logs for a service (e.g. `media_logs sonarr`) |
 | `media_svc` | List service endpoints and ports |
+| `media_update` | Pull latest images & rolling-restart all services |
+| `media_update <svc>` | Update only the named service (e.g. `media_update sonarr`) |
+| `media_restart <svc>` | Delete and recreate a service's pod |
+| `media_shell <svc>` | Open a shell inside a running pod |
+| `media_images` | Show running image versions for all pods |
 
 ## Networking
 
