@@ -259,7 +259,7 @@ install_mac_base() {
       # on Big Sur — attempting to install/upgrade will fail.
       echo "Configuring Docker CLI + Colima (Rancher Desktop requires macOS 12+)..."
       local -a colima_missing=()
-      for pkg in docker docker-compose colima; do
+      for pkg in docker colima; do
         if brew list "$pkg" &>/dev/null; then
           echo "  ✓ ${pkg} already installed (skipping upgrade — go requires macOS 12+)"
         else
@@ -276,10 +276,32 @@ install_mac_base() {
         done
         echo ""
         echo "   Install them manually:"
-        echo "   - Docker CLI:      https://docs.docker.com/engine/install/"
-        echo "   - Docker Compose:  https://docs.docker.com/compose/install/"
-        echo "   - Colima:          https://github.com/abiosoft/colima/releases"
+        echo "   - Docker CLI:  https://docs.docker.com/engine/install/"
+        echo "   - Colima:      https://github.com/abiosoft/colima/releases"
         echo ""
+      fi
+
+      # Install Docker Compose v2 as a CLI plugin (standalone binary).
+      # Homebrew's docker-compose formula depends on 'go' which requires macOS 12+,
+      # so we download the binary directly from GitHub instead.
+      if docker compose version &>/dev/null 2>&1; then
+        echo "  ✓ docker compose plugin already installed"
+      else
+        echo "  Installing Docker Compose v2 plugin (standalone binary)..."
+        local arch
+        arch=$(uname -m)
+        # Map architecture names (Apple uses arm64, Docker uses aarch64)
+        [[ "$arch" == "arm64" ]] && arch="aarch64"
+        local compose_url="https://github.com/docker/compose/releases/latest/download/docker-compose-darwin-${arch}"
+        local plugin_dir="${HOME}/.docker/cli-plugins"
+        mkdir -p "$plugin_dir"
+        if curl -fsSL "$compose_url" -o "${plugin_dir}/docker-compose" 2>/dev/null; then
+          chmod +x "${plugin_dir}/docker-compose"
+          echo "  ✓ docker compose plugin installed to ${plugin_dir}/docker-compose"
+        else
+          echo "  ⚠️  Failed to download Docker Compose. Install manually:"
+          echo "     https://docs.docker.com/compose/install/standalone/"
+        fi
       fi
     fi
 
