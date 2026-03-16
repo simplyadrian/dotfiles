@@ -1,0 +1,70 @@
+###############################################################################
+# SABnzbd — Kubernetes Deployment + Service (Usenet download client)
+###############################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sabnzbd
+  namespace: media
+  labels:
+    app: sabnzbd
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: sabnzbd
+  template:
+    metadata:
+      labels:
+        app: sabnzbd
+    spec:
+      containers:
+        - name: sabnzbd
+          image: lscr.io/linuxserver/sabnzbd:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "America/Chicago"
+          ports:
+            - containerPort: 8080
+              name: web
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: downloads
+              mountPath: /downloads
+            - name: incomplete
+              mountPath: /incomplete-downloads
+      volumes:
+        - name: config
+          hostPath:
+            path: ${CONFIG_PATH}/sabnzbd
+            type: DirectoryOrCreate
+        - name: downloads
+          hostPath:
+            path: ${DOWNLOADS_PATH}
+            type: DirectoryOrCreate
+        - name: incomplete
+          hostPath:
+            path: ${DOWNLOADS_PATH}/incomplete
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sabnzbd
+  namespace: media
+spec:
+  selector:
+    app: sabnzbd
+  ports:
+    - name: web
+      port: 8080
+      targetPort: 8080
+  type: NodePort
+

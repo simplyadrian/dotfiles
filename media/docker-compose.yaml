@@ -48,6 +48,24 @@ services:
       - ${DOWNLOADS_PATH:-~/Torrents}:/downloads
 
   ###########################################################################
+  # SABnzbd — Usenet download client
+  ###########################################################################
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    restart: unless-stopped
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-America/Chicago}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${CONFIG_PATH:-~/docker/configs}/sabnzbd:/config
+      - ${DOWNLOADS_PATH:-~/Torrents}:/downloads
+      - ${DOWNLOADS_PATH:-~/Torrents}/incomplete:/incomplete-downloads
+
+  ###########################################################################
   # Sonarr — TV show management
   ###########################################################################
   sonarr:
