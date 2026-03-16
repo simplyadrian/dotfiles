@@ -8,6 +8,17 @@ if ! command -v docker &>/dev/null; then
   return 0 2>/dev/null || exit 0
 fi
 
+# Auto-negotiate Docker API version when client is newer than server.
+# Common on macOS 11 (Big Sur) where the Docker CLI and Colima daemon
+# are pinned at different versions due to Homebrew Tier 3 limitations.
+if [[ -z "${DOCKER_API_VERSION:-}" ]]; then
+  _server_api=$(docker version --format '{{.Server.APIVersion}}' 2>/dev/null || true)
+  if [[ -n "$_server_api" ]]; then
+    export DOCKER_API_VERSION="$_server_api"
+  fi
+  unset _server_api
+fi
+
 export DOCKER_REPO_PREFIX=jess
 
 #

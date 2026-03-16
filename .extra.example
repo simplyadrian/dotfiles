@@ -41,11 +41,19 @@ git config --global github.user "$GH_USER"
 # export PLEX_CLAIM="claim-XXXXXXXXXXXX"  # Get from https://plex.tv/claim
 
 # Paths for media stack (used by k8s manifests and docker-compose.yaml)
-# export MEDIA_PATH="/mnt/media"
-# export DOWNLOADS_PATH="/home/yourusername/Torrents"
-# export CONFIG_PATH="/home/yourusername/docker/configs"
-# export PLEX_CONFIG_PATH="/mnt/plexmediaserver"
+# Use $HOME so paths work on both macOS (/Users/...) and Linux (/home/...)
+# export DOWNLOADS_PATH="$HOME/Torrents"
+# export CONFIG_PATH="$HOME/docker/configs"
 # export PLEX_TRANSCODE_PATH="/tmp/plex-transcode"
+#
+# OS-specific paths (NFS mounts on Linux, local paths on macOS)
+# if [[ "$(uname)" == "Darwin" ]]; then
+#   export MEDIA_PATH="$HOME/Movies"
+#   export PLEX_CONFIG_PATH="$HOME/Movies/plexmediaserver"
+# else
+#   export MEDIA_PATH="/mnt/media"
+#   export PLEX_CONFIG_PATH="/mnt/plexmediaserver"
+# fi
 
 # User/Group IDs for container permissions
 # export PUID=1000
