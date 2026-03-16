@@ -65,7 +65,6 @@ services:
     volumes:
       - ${CONFIG_PATH:-~/docker/configs}/sabnzbd:/config
       - ${DOWNLOADS_PATH:-~/Torrents}:/downloads
-      - ${DOWNLOADS_PATH:-~/Torrents}/incomplete:/incomplete-downloads
 
   ###########################################################################
   # Sonarr — TV show management
