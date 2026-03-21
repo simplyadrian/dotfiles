@@ -13,7 +13,6 @@
 #        bazarr.hgrey.com      → http://bazarr.media.svc:6767
 #        transmission.hgrey.com → http://transmission.media.svc:9091
 #        lazylibrarian.hgrey.com → http://lazylibrarian.media.svc:5299
-#        plex.hgrey.com        → http://plex.media.svc:32400
 #   4. Create Cloudflare Access policies for auth
 #   5. Create the secret:
 #        kubectl create secret generic cloudflared \
@@ -57,20 +56,6 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
----
-# Plex Service — required so cloudflared can reach Plex via cluster DNS
-# (Plex uses hostNetwork, so it has no Service by default)
-apiVersion: v1
-kind: Service
-metadata:
-  name: plex
-  namespace: media
-spec:
-  selector:
-    app: plex
-  ports:
-    - port: 32400
-      targetPort: 32400
 
 
 

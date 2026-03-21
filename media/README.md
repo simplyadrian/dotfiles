@@ -178,9 +178,8 @@ In the tunnel configuration, add these public hostnames:
 | `bazarr.hgrey.com` | `http://bazarr:6767` | `http://bazarr.media.svc:6767` |
 | `transmission.hgrey.com` | `http://transmission:9091` | `http://transmission.media.svc:9091` |
 | `lazylibrarian.hgrey.com` | `http://lazylibrarian:5299` | `http://lazylibrarian.media.svc:5299` |
-| `plex.hgrey.com` | `http://host.docker.internal:32400` | `http://plex.media.svc:32400` |
 
-> **Note:** Plex uses host networking in Docker Compose, so `cloudflared` reaches it via `host.docker.internal`. In K8s a dedicated Service routes to the Plex pod (see `k8s/cloudflared.yaml`).
+> **Note:** Plex is intentionally excluded — it uses host networking and has its own remote access feature. Streaming through Cloudflare adds latency and Plex apps can't handle Cloudflare Access login pages. Use Plex's built-in remote access (Settings → Remote Access) instead.
 
 ### Step 4 — Add Cloudflare Access policies (auth)
 
