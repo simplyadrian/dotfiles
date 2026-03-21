@@ -184,3 +184,25 @@ services:
     volumes:
       - ${CONFIG_PATH:-~/docker/configs}/overseerr:/config
 
+  ###########################################################################
+  # Cloudflare Tunnel — secure public access (no port forwarding needed)
+  #
+  # Setup:
+  #   1. Register hgrey.com via Cloudflare Registrar (~$10/yr)
+  #   2. Create a tunnel: Zero Trust dashboard → Networks → Tunnels → Create
+  #   3. Copy the tunnel token and set CLOUDFLARE_TUNNEL_TOKEN in ~/.extra
+  #   4. Add public hostnames in the tunnel config (see README.md)
+  #   5. Add Cloudflare Access policies for auth (free, up to 50 users)
+  #
+  # Activate: docker compose --profile tunnel up -d
+  ###########################################################################
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    profiles: ["tunnel"]
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

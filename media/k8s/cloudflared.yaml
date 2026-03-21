@@ -1,0 +1,76 @@
+###############################################################################
+# Cloudflare Tunnel — secure public access without port forwarding
+#
+# Setup:
+#   1. Register hgrey.com via Cloudflare Registrar (~$10/yr)
+#   2. Create a tunnel: Zero Trust dashboard → Networks → Tunnels → Create
+#   3. Add public hostnames in the tunnel dashboard:
+#        overseerr.hgrey.com   → http://overseerr.media.svc:5055
+#        radarr.hgrey.com      → http://radarr.media.svc:7878
+#        sonarr.hgrey.com      → http://sonarr.media.svc:8989
+#        prowlarr.hgrey.com    → http://prowlarr.media.svc:9696
+#        sabnzbd.hgrey.com     → http://sabnzbd.media.svc:8080
+#        bazarr.hgrey.com      → http://bazarr.media.svc:6767
+#        transmission.hgrey.com → http://transmission.media.svc:9091
+#        lazylibrarian.hgrey.com → http://lazylibrarian.media.svc:5299
+#        plex.hgrey.com        → http://plex.media.svc:32400
+#   4. Create Cloudflare Access policies for auth
+#   5. Create the secret:
+#        kubectl create secret generic cloudflared \
+#          --namespace media \
+#          --from-literal=token=<TUNNEL_TOKEN>
+###############################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: media
+  labels:
+    app: cloudflared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          args:
+            - tunnel
+            - --no-autoupdate
+            - run
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflared
+                  key: token
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+# Plex Service — required so cloudflared can reach Plex via cluster DNS
+# (Plex uses hostNetwork, so it has no Service by default)
+apiVersion: v1
+kind: Service
+metadata:
+  name: plex
+  namespace: media
+spec:
+  selector:
+    app: plex
+  ports:
+    - port: 32400
+      targetPort: 32400
+
+
+

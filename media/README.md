@@ -141,11 +141,120 @@ These are loaded from `.dockerfunc`:
 | `media_shell <svc>` | Open a shell inside a running pod |
 | `media_images` | Show running image versions for all pods |
 
+## Public Access — Cloudflare Tunnel
+
+Expose Overseerr (and optionally other services) to the internet **without opening any ports on your router**. All traffic flows through an encrypted outbound tunnel to Cloudflare's edge.
+
+**Cost:** ~$10/yr for the domain. Tunnel, DNS, and auth are all free.
+
+### Step 1 — Buy a domain on Cloudflare Registrar
+
+1. Go to [dash.cloudflare.com](https://dash.cloudflare.com) → sign up (free)
+2. Navigate to **Domain Registration → Register Domains**
+3. Search for `hgrey.com` (or any domain you like)
+4. Purchase it — Cloudflare sells at cost, no markup (~$10–12/yr for `.com`)
+5. The domain is automatically added to your Cloudflare account with DNS managed
+
+### Step 2 — Create a Cloudflare Tunnel
+
+1. Go to [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com)
+2. Navigate to **Networks → Tunnels → Create a tunnel**
+3. Choose **Cloudflared** connector type
+4. Name the tunnel (e.g., `media-stack`)
+5. On the install page, copy just the **tunnel token** (the long string after `--token`)
+6. Save the token — you'll need it next
+
+### Step 3 — Configure public hostnames
+
+In the tunnel configuration, add these public hostnames:
+
+| Public Hostname | Service URL (Docker Compose) | Service URL (Kubernetes) |
+|---|---|---|
+| `overseerr.hgrey.com` | `http://overseerr:5055` | `http://overseerr.media.svc:5055` |
+| `radarr.hgrey.com` | `http://radarr:7878` | `http://radarr.media.svc:7878` |
+| `sonarr.hgrey.com` | `http://sonarr:8989` | `http://sonarr.media.svc:8989` |
+| `prowlarr.hgrey.com` | `http://prowlarr:9696` | `http://prowlarr.media.svc:9696` |
+| `sabnzbd.hgrey.com` | `http://sabnzbd:8080` | `http://sabnzbd.media.svc:8080` |
+| `bazarr.hgrey.com` | `http://bazarr:6767` | `http://bazarr.media.svc:6767` |
+| `transmission.hgrey.com` | `http://transmission:9091` | `http://transmission.media.svc:9091` |
+| `lazylibrarian.hgrey.com` | `http://lazylibrarian:5299` | `http://lazylibrarian.media.svc:5299` |
+| `plex.hgrey.com` | `http://host.docker.internal:32400` | `http://plex.media.svc:32400` |
+
+> **Note:** Plex uses host networking in Docker Compose, so `cloudflared` reaches it via `host.docker.internal`. In K8s a dedicated Service routes to the Plex pod (see `k8s/cloudflared.yaml`).
+
+### Step 4 — Add Cloudflare Access policies (auth)
+
+1. In Zero Trust dashboard, go to **Access → Applications → Add an application**
+2. Select **Self-hosted**
+
+**For Overseerr (public — friends can request):**
+
+| Setting | Value |
+|---|---|
+| Application name | Overseerr |
+| Session duration | 24 hours |
+| Subdomain | `overseerr` |
+| Domain | `hgrey.com` |
+| Policy name | Allow friends |
+| Action | Allow |
+| Include rule | Emails — list your and your friends' email addresses |
+
+> Overseerr also has built-in Plex auth. Cloudflare Access is the front door; Plex login is the second layer.
+
+**For arr apps (admin only):**
+
+| Setting | Value |
+|---|---|
+| Application name | Admin tools |
+| Session duration | 24 hours |
+| Subdomain | `*.hgrey.com` (wildcard catches everything) |
+| Policy name | Admin only |
+| Action | Allow |
+| Include rule | Emails — just your email |
+
+> Create the wildcard app **after** the Overseerr app. Cloudflare evaluates more specific matches first, so Overseerr friends won't be blocked by the wildcard.
+
+### Step 5 — Deploy
+
+**Docker Compose:**
+
+```bash
+# Add to ~/.extra
+export CLOUDFLARE_TUNNEL_TOKEN="eyJhIjoiNGY5..."
+
+# Start the stack with the tunnel
+docker compose --profile tunnel up -d
+
+# Verify cloudflared is connected
+docker logs cloudflared
+# Look for: "Connection registered" and "Registered tunnel connection"
+```
+
+**Kubernetes:**
+
+```bash
+# Create the tunnel token secret
+kubectl create secret generic cloudflared \
+  --namespace media \
+  --from-literal=token="eyJhIjoiNGY5..."
+
+# Deploy
+kubectl apply -f ~/dotfiles/media/k8s/cloudflared.yaml
+
+# Verify
+kubectl logs -n media deploy/cloudflared
+```
+
+### Verify
+
+After deploying, visit `https://overseerr.hgrey.com` — you should see a Cloudflare Access login page. After authenticating with your email, you'll be forwarded to Overseerr.
+
 ## Networking
 
 - **Plex** uses `host` network mode (required for DLNA/local network discovery)
 - **Docker Compose:** all other services are on the default bridge network and talk via container names (e.g., `http://sonarr:8989`)
 - **Kubernetes:** services communicate via ClusterIP DNS (e.g., `http://sonarr:8989`); external access via NodePort
+- **Cloudflare Tunnel:** `cloudflared` connects outbound to Cloudflare's edge — no inbound ports needed
 
 ## Paths
 
